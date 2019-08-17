@@ -18,7 +18,7 @@ defaultContentLanguage = "en-us"
 title = "Kid Chartlemagne"
 theme = "hugo-tranquilpeak-theme"
 disqusShortname = "bradisbrad"
-googleAnalytics = "UA-33175434-1"
+googleAnalytics = "UA-145815935-1"
 paginate = 7
 canonifyurls = true
 
