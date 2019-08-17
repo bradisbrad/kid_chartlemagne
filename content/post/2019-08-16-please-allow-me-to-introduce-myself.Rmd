@@ -1,0 +1,51 @@
+---
+title: Please allow me to introduce myself
+author: Brad Hill
+date: '2019-08-17'
+slug: please-allow-me-to-introduce-myself
+categories:
+  - Personal
+tags:
+  - Personal
+keywords:
+  - tech
+---
+
+Oh, hello! I didn't see you there. Come in, have a seat, and get ready for the ride of your life. Okay, realistically, the ride is going to be less *roller coaster on fire* and more *chair that gets old folks up stairs* but I imagine said old folks are about as excited at the top of the stairs as I would be at the top of said roller coaster, so it works out.   
+  
+### What's a guy like you doing in a place like this?    
+  
+I know what you're probably thinking.   
+
+> Brad, why are you making a blog? You don't even really read blogs, why do you think anyone would want to read yours?   
+  
+And you'd be absolutely right. I don't read too many blogs regularly, but I *do* end up visiting a lot of blogs. Every time I search for anything data related, results are typically, in order:   
+  
+1. Stack Overflow   
+2. R-bloggers   
+3. Personal Data Science Blog (x420,000)   
+  
+So my goal here is to just bump that personal data science blog number up by 1. What's the worst that could happen? I get lost in a sea of blogs that are all about the same thing but doing it in slightly different ways? I scream into the void slightly louder than normal? I'm fine with that.   
+
+Ultimately, if I help someone out every now and then, or I make someone laugh, or I give someone some new insight, that's all I'm really trying to do. I'm not claiming to be an expert at anything here. I'm just one man, trying to figure out why the Aurora Borealis, at this time of year, at this time of day, in this part of the country, is localized entirely in my kitchen.   
+  
+### Okay, so what is this thing anyway?   
+  
+In the words of [Mike Asparagus](https://www.youtube.com/watch?v=_uv8Ej4CEoQ), it's a sequential image, stereophonic, multimedia event. In the words of me, it's a clusterfuck. It's whatever you want it to be, and it's nothing at all. I'm going to post a lot of data stuff on here: I'm going to try to post all my [Tidy Tuesday](https://github.com/rfordatascience/tidytuesday/blob/master/README.md) analysis; I'm going to post cool R stuff I find; I'm going to post data projects and updates. I'm also probably going to post random personal stuff: album reviews; movie reviews; unpopular opinions about the movie *The Farewell* that Maria and I both hold. I may even throw some satire articles that would have gone to [The Tangerine](https://twitter.com/utktangerine) while I was in college (and may I add, R.I.P.) You never know what you're going to get.   
+  
+
+### Does this mean you're going to make a podcast?   
+  
+I mean... probably? I've got a podcast mic and have yet to use it for anything other than talking to people on PS4 and pretending that I'm going to record voice work for someone in need of an amateur with little to no talent. Maria (*who won't tell me what her blog is, so I can't link it*) and I have been talking about doing a podcast since well before we started dating, so it only seems reasonable that we start one now that I'm writing a blog that three people will read. Plus, it feels like everyone on the planet has a podcast, so if I'm jumping in this late to the blog game, might as well jump in to the podcast game as well. I don't have any immediate plans, but I don't even have an immediate plan as to how this site is going to go, so best to keep expectations low.  
+  
+### Are you going to post on a set schedule?  
+  
+No.
+  
+### Damn, okay. Well, is this going to end up like your other blog?   
+  
+Ah, you mean my [sad sad movie review blog from high school?](https://thereelreviewer.wordpress.com/) Probably, but given a long enough timespan every website ends up abandoned. Dystopian young adult novels are all the rage right now, why not witness that descent into irrelevance first hand by following along and reading my blog? You may regret it, but if you don't have any regrets on your deathbed, you've probably lived a pretty boring life, right?   
+  
+### What's the song you referenced in the title?   
+  
+<iframe src="https://open.spotify.com/embed/track/1Ud6moTC0KyXMq1Oxfien0" width="740" height="80" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
