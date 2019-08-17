@@ -94,7 +94,7 @@ canonifyurls = true
   identifier = "stackoverflow"
   name = "Stack Overflow"
   pre = "<i class=\"sidebar-button-icon fa fa-lg fa-stack-overflow\"></i>"
-  url = "https://stackoverflow.com/users/636472/kakawait"
+  url = "https://stackoverflow.com/users/11933962/bradisbrad"
 
 [[menu.misc]]
   weight = 1
