@@ -15,7 +15,7 @@
 baseURL = "https://bradisblogging.netlify.com"
 languageCode = "en-us"
 defaultContentLanguage = "en-us"
-title = "Kid Chartlemagne"
+title = "Brad is Blogging"
 theme = "hugo-tranquilpeak-theme"
 disqusShortname = "bradisbrad"
 googleAnalytics = "UA-145815935-1"
