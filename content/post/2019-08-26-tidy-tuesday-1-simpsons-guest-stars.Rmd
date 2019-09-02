@@ -1,0 +1,436 @@
+---
+title: 'Tidy Tuesday 1: Simpsons Guest Stars'
+author: Brad Hill
+date: '2019-09-02'
+slug: tidy-tuesday-1-simpsons-guest-stars
+categories:
+  - Data
+tags:
+  - R
+  - r4ds
+  - rstats
+  - tidy tuesday
+  - Simpsons
+  - pop culture
+keywords:
+  - tech
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyverse, tidyquant, tidytext, lubridate, odbc, rebus, gghighlight, DataExplorer, devtools, skimr, magrittr,rvest, tidygraph, ggraph, colorspace)
+devtools::install_github('bradisbrad/olfatbones'); library(olfatbones)
+simpsons_palette <- c("#FED41E", "#D2B17E", "#6AAEDF", "#657A7D", "#0D7CC1", "#F06D31", "#D5E4A1", "#109BDE", "#84C55F", "#6DCFF6", "#2EA5CD")
+```
+
+Well, we did it. We made it nearly 2 weeks with only one half-assed introduction post on here, and let me tell you, a lot has happened. [Taylor Swift dropped *Lover*](https://open.spotify.com/album/1NAmidJlEaVgA3MpcPFYGq), Joe Walsh has decided his next solo album is going to [run against Trump](https://abcnews.go.com/Politics/exclusive-joe-walsh-announces-republican-primary-challenge-president/story?id=65122073&cid=clicksource_903_null_dp_hed) in 2020, and Andrew Yang released his [climate change plan](https://www.yang2020.com/blog/climate-change/) that includes "taking the country and pushing it somewhere else!" With so many big important things happening, and me being so slow I'm posting it the day before next week's set, it's the perfect opportunity to jump into this week's [Tidy Tuesday](https://github.com/rfordatascience/tidytuesday/blob/master/README.md) dataset:
+  
+### Simpsons Guest Stars  
+   
+Let's go ahead and dive in.    
+   
+```{r data_ingest, message=F, warning=F}
+simpsons <- readr::read_delim("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-08-27/simpsons-guests.csv", delim = "|", quote = "")
+glimpse(simpsons)
+``` 
+  
+Well, it looks like this is a pretty low-dimension dataset (6 variables), so we may get more out of just taking a look at the first ten rows than we would trying to mess with `glimpse`. 
+   
+```{r head_data}
+head(simpsons, n = 10)
+```
+   
+A couple of things stand out immediately to me.   
+   
+- `number` looks like it has both series episode (before the hyphen) and season-episode pairing (after the hyphen)   
+- `role` can be multiple characters, and is split by a semicolon `;`   
+- `production_code` can probably be dropped or ignored   
+   
+Before I do anything, I want to split up that `number` column. I'm going to make an arbitrary rule that any two-part episodes (for instance, Season 28's *The Great Phatsby*) are going to use the first part's episode number. I'm going to also ignore the movie for the time being.  
+   
+I also want to make sure we follow tidy guidelines, so I'm going to split up that `role` column and have a separate entry for each role, even if it's the same person playing the roles in the same episode. That is going to help with summarizing things as we go along.   
+   
+
+```{r clean_simpsons}
+simpsons  %<>% 
+  filter(number != 'M1') %>% 
+  mutate(number = str_remove(number, ";.*$")) %>% 
+  separate(number, c("ep_no", "sep_combo"),sep = "–", remove = F) %>% 
+  mutate(sep_no = str_sub(sep_combo, -2, -1),
+         role = strsplit(role, ";")) %>%
+  unnest(role) %>%
+  mutate(role = str_trim(role),
+         season = as.numeric(season),
+         ep_no = as.numeric(ep_no),
+         sep_no = as.numeric(sep_no),
+         sep_combo = as.numeric(sep_combo))
+```
+   
+Full disclosure, I was a bit unsure about the best way to separate that `role` column when I didn't know the number of characters, so I jacked [this answer from stackoverflow.](https://stackoverflow.com/a/33288868/11933962)   
+   
+### Episodes from First to Last   
+
+The Simpsons has been on for a ***long*** time. It's been on longer than I've been alive. It's been on longer than Old Town Road was at the top of the Billboard Hot 100. It's been on longer than I've wanted to fit a "rule of 3" joke into a blog post. Naturally, some of these guest stars have been mainstays in the series, so let's look at some of the longest standing guest stars and roles.   
+   
+```{r longest_st_to_end, echo=F}
+simpsons %>% 
+  group_by(guest_star) %>% 
+  summarize(min_ep = min(ep_no),
+            max_ep = max(ep_no),
+            timespan = (max(ep_no) - min(ep_no))+1,
+            appearances = n()) %>% 
+  arrange(desc(timespan)) %>% 
+  top_n(25, timespan) %>% 
+  mutate(guest_star = fct_reorder(guest_star, timespan)) %>% 
+  ggplot() +
+  geom_segment(aes(x = guest_star, xend = guest_star, y = min_ep, yend = max_ep), color = "#657A7D", size = 1) +
+  geom_point(aes(guest_star, min_ep), color = "#0D7CC1", size = 2) +
+  geom_point(aes(guest_star, max_ep), color = "#F05D31", size = 2) +
+  labs(title = "Don't Forget, You're Here Forever",
+       subtitle = "Number of episodes between first guest star appearance and last",
+       x = "Guest Star", y = "Episodes",
+       caption = "Source: Wikipedia\nVisualization: @bradisbrad") +
+  scale_y_continuous(breaks = seq(0,650, by = 50)) +
+  theme_bw() +
+  coord_flip() +
+  theme(plot.title = element_text(face = 'bold', size = 15),
+        plot.subtitle = element_text(size = 12),
+        plot.caption = element_text(face = 'italic', size = 9),
+        panel.grid.minor = element_blank())
+```
+   
+Clearly we've got a couple of power houses here in the guest star longevity category. Marcia Wallace, Jon Lovitz, and Jackie Mason all clock in with more than 620 episodes between their first and last episode. That doesn't mean they are the most frequent guests, however. The Simpsons is such an institution that the series can get big names for cutaways and gags; a big reason that many of these guest stars have such a long time between their first and last episode isn't that they are an integral part of the series, they are one off jokes.  
+
+### Episodes per Guest Star
+
+```{r most_eps, echo=F}
+simpsons %>% 
+  select(guest_star, number) %>% 
+  distinct() %>% 
+  group_by(guest_star) %>% 
+  summarize(appearances = n()) %>% 
+  arrange(desc(appearances)) %>% 
+  top_n(10, appearances) %>% 
+  mutate(guest_star = fct_reorder(guest_star, appearances)) %>% 
+  ggplot() +
+  geom_col(aes(guest_star, appearances), fill = "#FED41E") +
+  gghighlight(guest_star %in% c('Marcia Wallace', 'Jon Lovitz', 'Jackie Mason'), unhighlighted_colour = ggplot2::alpha("#D2B17E", 0.7)) +
+  labs(title = "Do It For Her",
+       subtitle = "Number of appearances by guest star",
+       x = "Guest Star", y = "Episodes",
+       caption = "Source: Wikipedia\nVisualization: @bradisbrad") +
+  scale_y_continuous(breaks = seq(0,175, by = 25)) +
+  theme_bw() +
+  coord_flip() +
+  theme(plot.title = element_text(face = 'bold', size = 15),
+        plot.subtitle = element_text(size = 12),
+        plot.caption = element_text(face = 'italic', size = 9),
+        panel.grid.minor = element_blank())
+```
+   
+While Marcia Wallace is clearly a reoccuring guest star, Phil Hartman, who has been in the second most episodes, didn't even make it in the top 25 for longevity. Jon Lovitz and Jackie Mason, on the other hand, appear in 15 and 9 episodes respectively.   
+   
+### Recurring Guest Characters  
+     
+Next, let's take a look at which characters have appeared in the most Simpsons episodes.   
+   
+```{r echo=F, message=F, warning=F}
+simpsons %>% 
+  select(guest_star, role, number) %>% 
+  distinct() %>% 
+  group_by(role) %>% 
+  summarize(appearances = n()) %>% 
+  filter(!role %in% c("Himself", "Herself", "Themselves", "Narrator", "Various animals")) %>% 
+  arrange(desc(appearances), role) %>% 
+  inner_join(simpsons %>% 
+              select(role, guest_star)) %>% 
+  mutate(guest_star = ifelse(role == "Fat Tony","Joe Mantegna**", guest_star),
+         role = ifelse(role == "Fat Tony", "Fat Tony**", role)) %>% 
+  distinct() %>% 
+  top_n(10, appearances) %>% 
+  head(10) %>% 
+  ggplot(aes(fct_reorder(role, appearances), appearances, fill = fct_reorder(guest_star, -appearances))) +
+  geom_col() +
+  scale_fill_manual(values = simpsons_palette) +
+  labs(title = "She's Faking",
+       subtitle = "Number of appearances by character*",
+       x = "Character", y = "Episodes",
+       caption = "*Excludes guest stars playing themselves\n**Phil Hartman plays Fat Tony for one episode\nSource: Wikipedia | Visualization: @bradisbrad",
+       fill = "Guest Star") +
+  scale_y_continuous(breaks = seq(0,175, by = 25)) +
+  theme_bw() +
+  coord_flip() +
+  theme(plot.title = element_text(face = 'bold', size = 15),
+        plot.subtitle = element_text(size = 12),
+        plot.caption = element_text(face = 'italic', size = 9),
+        panel.grid.minor = element_blank())
+```
+   
+No surprise here, Edna Krabappel, a character played by Marcia Wallace, has appeared in the most episodes, clocking in at nearly 175, with the second most recurrent character not even hitting the 30 episode mark. An interesting point that was mentioned in the cleaning process rears its head again in this chart, though. We see here that Phil Hartman, who you'll recall placed second in guest appearances, lands twice in the top 10 character appearance list.  
+   
+### Busiest Simpsons Guest Stars  
+   
+This leads me to my next question: which guest star is voicing the most characters?  
+  
+```{r char_per_star, echo=F}
+simpsons %>% 
+  select(guest_star, role) %>% 
+  distinct() %>% 
+  group_by(guest_star) %>% 
+  summarize(cnt = n()) %>% 
+  arrange(desc(cnt)) %>% 
+  top_n(10, cnt) %>% 
+  head(10) %>% 
+  ggplot(aes(fct_reorder(guest_star,cnt), cnt, fill = guest_star)) +
+  geom_col() +
+  scale_fill_manual(values = simpsons_palette) +
+  labs(title = "The Same Thing We Do Everynight, Pinky",
+       subtitle = "Unique characters per guest star",
+       x = "Guest Star", y = "Characters",
+       caption = "Source: Wikipedia\nVisualization: @bradisbrad") +
+  scale_y_continuous(breaks = seq(0,35, by = 5)) +
+  theme_bw() +
+  coord_flip() +
+  theme(plot.title = element_text(face = 'bold', size = 15),
+        plot.subtitle = element_text(size = 12),
+        plot.caption = element_text(face = 'italic', size = 9),
+        panel.grid.minor = element_blank(),
+        legend.position = "none")
+``` 
+   
+That's right, ladies and gentlemen. The most prolific guest voice actor on The Simpsons is none other than The Brain of *Pinky & The Brain* fame! Maurice LaMarche voices 35 guest characters in the series.  
+   
+### Enough with the Bar Charts Already  
+  
+Yeah, I know. It was a lot. Lots of counts by names, and not a whole lot more. Let's see what we can do without bar charts, because I mean, oof.   
+  
+
+```{r wiki_pull1, warnings = F, message=F}
+num_eps <- c()
+for(i in 1:30){
+  num_eps$season[i] <- i
+  num_eps$eps[i] <- read_html(sprintf("https://en.wikipedia.org/wiki/The_Simpsons_(season_%s)",i)) %>% 
+    html_nodes(xpath = "/html/body/div[3]/div[3]/div[4]/div/table[1]/tbody/tr[4]/td") %>% 
+    html_text() %>% 
+    as.numeric()
+}
+num_eps <- bind_cols(season = num_eps$season, eps = num_eps$eps)
+```
+
+  
+```{r guests_thru_seasons, echo=F, message=F, warning=F}
+simpsons %>% 
+  select(season, guest_star) %>% 
+  distinct() %>% 
+  group_by(season) %>%
+  summarize(num_guests = n()) %>%
+  left_join(num_eps) %>%
+  mutate(avg_g_ep = num_guests/eps) %>% 
+  ggplot() +
+  geom_line(aes(season, avg_g_ep, color = "Avg. Guests/Episode"), size = 1) +
+  geom_line(aes(season, num_guests/20, color = "Guests/Season"), size = 1) +
+  scale_y_continuous(sec.axis = sec_axis(~.*20, name = "Guest Appearances per Season")) +
+  labs(title = "As Long As You're On TV People Will Respect You",
+       subtitle = "Guest trends by season",
+       x = "Season", y = "Average Guests per Episode",
+       caption = "Source: Wikipedia\nVisualization: @bradisbrad",
+       color = "") +
+  scale_x_continuous(breaks = seq(0,35, by = 5)) +
+  scale_color_manual(values = simpsons_palette) +
+  theme_bw() +
+  theme(plot.title = element_text(face = 'bold', size = 15),
+        plot.subtitle = element_text(size = 12),
+        plot.caption = element_text(face = 'italic', size = 9),
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom")
+```
+
+I noticed a lot of people on Twitter going the "number of guests per season" route, and I like that, but I wanted to also throw in an average guests per episode metric as well, because we have some seasons with fewer episodes than others (the first being the most obvious with only 13 episodes.) As the chart above indicates, the trend is still the same, and they track together, but it does show that the change is not nearly as drastic as it looks in the first few seasons. Also worth noting, I had to go grab the number of episodes per season from Wikipedia, because the final episode number would not appear in our data if there was no guest appearance. That did give me another idea, though. Why not get even more season and episode information from Wikipedia so we can take a quick look at rankings before I wrap this up?     
+  
+### Even More Season and Episode Information from Wikipedia
+
+```{r wikipull2, warning = F, message=F}
+season_info <- list()
+for(i in 1:30){
+  season_info[[i]] <-
+    read_html(sprintf("https://en.wikipedia.org/wiki/The_Simpsons_(season_%s)",i)) %>% 
+    html_nodes(xpath = "/html/body/div[3]/div[3]/div[4]/div/table[2]") %>% 
+    html_table() %>% 
+    `[[`(1) %>%
+    as_tibble() %>% 
+    mutate(desc = lead(No.overall, 1)) %>% 
+    filter(!is.na(as.numeric(No.overall))) %>% 
+    janitor::clean_names() %>% 
+    mutate(title = str_remove_all(title, '"'),
+           desc = str_remove_all(desc, '"'),
+           original_air_date = ymd(str_extract(original_air_date, "[0-9]{4}-[0-9]{2}-[0-9]{2}")),
+           season = i)
+}
+season_info <- bind_rows(season_info) %>% 
+  mutate(u_s_viewers_millions = as.numeric(str_remove(u_s_viewers_millions, "\\[.*\\]")),
+         no_overall = as.numeric(no_overall),
+         no_inseason = as.numeric(no_inseason))
+```
+
+   
+```{r echo=F, warning=F, message=F}
+season_start <- season_info %>% 
+  select(season, no_overall) %>% 
+  mutate(no_overall = as.numeric(no_overall)) %>% 
+  group_by(season) %>% 
+  filter(no_overall == min(no_overall)) %>% 
+  pull(no_overall)
+
+season_info %>% 
+  mutate(u_s_viewers_millions = as.numeric(str_remove(u_s_viewers_millions, "\\[.*\\]")),
+         no_overall = as.numeric(no_overall)) %>% 
+  filter(no_overall < 700) %>% 
+  ggplot(aes(no_overall, u_s_viewers_millions)) +
+  geom_line(color = simpsons_palette[1], size = 0.8) +
+  geom_vline(xintercept = season_start, alpha = 0.2, linetype = 'dashed') +
+  labs(title = "It May Be On A Lousy Channel, But The Simpsons Are On TV!",
+       subtitle = "Viewership by episode",
+       x = "Season", y = "US Viewers (millions)",
+       caption = "Source: Wikipedia\nVisualization: @bradisbrad",
+       color = "") +
+  scale_x_continuous(breaks = season_start,labels = c(1:30)) +
+  scale_y_continuous(breaks = seq(0, 35, by = 5)) +
+  theme_bw() +
+  theme(plot.title = element_text(face = 'bold', size = 15),
+        plot.subtitle = element_text(size = 12),
+        plot.caption = element_text(face = 'italic', size = 9),
+        panel.grid.minor = element_blank())
+```
+  
+```{r echo=F, warning=F, message=F}
+season_info %>%  
+  filter(no_overall < 700) %>% 
+  select(season, no_inseason, original_air_date, u_s_viewers_millions) %>% 
+  group_by(season) %>% 
+  filter(no_inseason %in% c(min(no_inseason), max(no_inseason))) %>% 
+  mutate(end_rating = lead(u_s_viewers_millions, 1)) %>% 
+  filter(!is.na(end_rating)) %>% 
+  mutate(ratings_delta = end_rating - u_s_viewers_millions) %>% 
+  select(season, ratings_delta) %>% 
+  mutate(pos = ifelse(ratings_delta > 0, T, F))  %>% 
+  ggplot(aes(season, ratings_delta, fill = pos)) +
+  geom_col() +
+  geom_hline(yintercept = 0, alpha = 0.6, color = 'gray40', size = 1, linetype = 'dashed') +
+  labs(x = "Season",
+       y = "Viewers gained/lost over season (millions)",
+       title = "Can't Win 'em All, But You Can Lose Most Of Them",
+       subtitle = "Change in viewership over the course of a season",
+       caption = "Source: Wikipedia\nVisualization: @bradisbrad") +
+  theme_bw() +
+  scale_y_continuous(breaks = seq(-15, 15, by = 5), limits = c(-17,17), expand = c(0,0)) +
+  scale_x_continuous(breaks = seq(1, 30, by = 1)) +
+  scale_fill_manual(values = c(simpsons_palette[c(1,3)])) +
+  theme(legend.position = 'none',
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(face = 'bold', size = 15),
+        plot.subtitle = element_text(size = 12),
+        plot.caption = element_text(face = 'italic', size = 9))
+```
+  
+Well, that's sad to see. Granted, the show has been on for 30 years. It's a wonder it's still around, but at this point it could probably have 3 viewers a week and still make it on air. Plus, I'd imagine that The Simpsons is a victim of its own success. If The Simpsons wasn't as successful as it was, Family Guy, American Dad, Bob's Burgers, etc. wouldn't even exist, much less be relatively successful. A surprising trend here is mid-season spikes in ratings, especially from season 21 to present day.   
+  
+My first thought was that it was perhaps just a function of a mid-season hiatus, but that doesn't really appear to be all that accurate.  
+  
+```{r echo = F, warning=F, message=F}
+season_info %>% 
+  mutate(wday = wday(original_air_date),
+         last_ep_date = lag(original_air_date, 1)) %>% 
+  group_by(season) %>% 
+  filter(u_s_viewers_millions == max(u_s_viewers_millions)) %>% 
+  select(season, ep_no = no_inseason, title, air_date = original_air_date, viewers_mil = u_s_viewers_millions, last_ep_date) %>% 
+  mutate(diff = air_date - last_ep_date,
+         hiatus = ifelse(diff<=14, F, T)) %>% 
+  filter(!is.na(hiatus)) %>% 
+  group_by(hiatus) %>% 
+  summarize(cnt = n()) %>% 
+  ggplot(aes(hiatus, cnt, fill = hiatus)) +
+  # ggplot(aes(hiatus, viewers_mil, fill= hiatus)) +
+  # geom_boxplot(aes(group = hiatus)) +
+  geom_col() +
+    labs(x = "Back from Hiatus",
+       y = "Episodes",
+       title = "You Can Use Facts To Prove Anything That’s Even Remotely True",
+       subtitle = "Season highs coming after hiatus (more than 2 weeks off)",
+       caption = "Source: Wikipedia\nVisualization: @bradisbrad") +
+  theme_bw() +
+  scale_fill_manual(values = simpsons_palette[c(1,3)]) +
+  theme(legend.position = 'none',
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(face = 'bold', size = 15),
+        plot.subtitle = element_text(size = 12),
+        plot.caption = element_text(face = 'italic', size = 9))
+```
+  
+Ratings do seem to improve with a 3 week hiatus before the episode airs, but if it was as simple as long breaks upping viewership, there wouldn't be a drop off for a 4 week/month long hiatus. Maybe 3 weeks is that sweet spot between *"Oh, right The Simpsons hasn't been on in a while!"* and *"Have they finally canceled The Simpsons?"*   
+  
+```{r echo=F, warning = F, message=F}
+season_info %>% 
+  mutate(wday = wday(original_air_date),
+         last_ep_date = lag(original_air_date, 1)) %>% 
+  group_by(season) %>% 
+  # filter(u_s_viewers_millions == max(u_s_viewers_millions)) %>% 
+  select(season, ep_no = no_inseason, title, air_date = original_air_date, viewers_mil = u_s_viewers_millions, last_ep_date) %>% 
+  mutate(diff = air_date - last_ep_date,
+         wks_since = case_when(diff <=7 ~ '1 week',
+                               diff <= 14 ~ '2 weeks',
+                               diff <= 21 ~ '3 weeks',
+                               diff <= 28 ~ '4 weeks',
+                               diff > 28 ~ '1 month+'),
+         wks_since = factor(wks_since, levels = c('1 week', '2 weeks', '3 weeks', '4 weeks', '1 month+'))) %>% 
+  filter(!is.na(wks_since)) %>%
+  # ggplot(aes(hiatus, cnt, fill = hiatus)) +
+  ggplot(aes(wks_since, viewers_mil, fill= wks_since)) +
+  geom_boxplot(aes(group = wks_since)) +
+  # geom_col() +
+    labs(x = "Time since last episode",
+       y = "Viewers (millions)",
+       title = "Facts Schmacts",
+       subtitle = "Ratings based on time since last episode",
+       caption = "Source: Wikipedia\nVisualization: @bradisbrad") +
+  theme_bw() +
+  scale_fill_manual(values = simpsons_palette) +
+  theme(legend.position = 'none',
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(face = 'bold', size = 15),
+        plot.subtitle = element_text(size = 12),
+        plot.caption = element_text(face = 'italic', size = 9))
+```
+  
+### Okay, so what is it then?   
+  
+```{r calendar, echo =F, warning=F, message=F}
+season_info %>% 
+  mutate(wday = wday(original_air_date)) %>% 
+  group_by(season) %>% 
+  filter(u_s_viewers_millions == max(u_s_viewers_millions)) %>% 
+  select(season, ep_no = no_inseason, title, air_date = original_air_date, viewers_mil = u_s_viewers_millions) %>% 
+  filter(str_detect(title, 'Treehouse')) %>% 
+  knitr::kable(format = 'html')
+```
+  
+Chasing that down the rabbit hole, I found that 6 season highs were Treehouse of Horror episodes. Who knew that Simpsons fans were so enamored with Halloween? Or maybe they're just enamored with holiday theme episodes. The problem with that idea is that there's only one season high that aired in December.    
+  
+  
+```{r calendar2, echo =F, warning=F, message=F}
+season_info %>% 
+  mutate(wday = wday(original_air_date)) %>% 
+  group_by(season) %>% 
+  filter(u_s_viewers_millions == max(u_s_viewers_millions)) %>% 
+  select(season, ep_no = no_inseason, title, air_date = original_air_date, viewers_mil = u_s_viewers_millions) %>% 
+  filter(month(air_date)==1) %>% 
+  knitr::kable(format = 'html')
+```
+  
+January, however, is a surprisingly good month for The Simpsons, with the first or second episode of the new year being the season high 13 times, including the most recent 9 seasons. Who knows? Maybe Americans everywhere are getting together at Christmas and reminiscing about the days when The Simpsons wasn't on its last leg. Everyone gets blurry-eyed, goes home, and watches the first episode of the new year before kicking off the cycle all over again next year.    
+  
+If there's one thing I know though, The Simpsons was around before I was here, and it'll be around long after I'm gone.   
+  
+Diamonds aren't forever, folks.   
+  
+*Homer Simpson is.*  
+
