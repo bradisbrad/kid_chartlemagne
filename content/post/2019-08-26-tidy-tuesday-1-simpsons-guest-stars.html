@@ -1,0 +1,535 @@
+---
+title: 'Tidy Tuesday 1: Simpsons Guest Stars'
+author: Brad Hill
+date: '2019-09-02'
+slug: tidy-tuesday-1-simpsons-guest-stars
+categories:
+  - Data
+tags:
+  - R
+  - r4ds
+  - rstats
+  - tidy tuesday
+  - Simpsons
+  - pop culture
+keywords:
+  - tech
+---
+
+
+
+<p>Well, we did it. We made it nearly 2 weeks with only one half-assed introduction post on here, and let me tell you, a lot has happened. <a href="https://open.spotify.com/album/1NAmidJlEaVgA3MpcPFYGq">Taylor Swift dropped <em>Lover</em></a>, Joe Walsh has decided his next solo album is going to <a href="https://abcnews.go.com/Politics/exclusive-joe-walsh-announces-republican-primary-challenge-president/story?id=65122073&amp;cid=clicksource_903_null_dp_hed">run against Trump</a> in 2020, and Andrew Yang released his <a href="https://www.yang2020.com/blog/climate-change/">climate change plan</a> that includes “taking the country and pushing it somewhere else!” With so many big important things happening, and me being so slow I’m posting it the day before next week’s set, it’s the perfect opportunity to jump into this week’s <a href="https://github.com/rfordatascience/tidytuesday/blob/master/README.md">Tidy Tuesday</a> dataset:</p>
+<div id="simpsons-guest-stars" class="section level3">
+<h3>Simpsons Guest Stars</h3>
+<p>Let’s go ahead and dive in.</p>
+<pre class="r"><code>simpsons &lt;- readr::read_delim(&quot;https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-08-27/simpsons-guests.csv&quot;, delim = &quot;|&quot;, quote = &quot;&quot;)
+glimpse(simpsons)</code></pre>
+<pre><code>## Observations: 1,386
+## Variables: 6
+## $ season          &lt;chr&gt; &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;...
+## $ number          &lt;chr&gt; &quot;002–102&quot;, &quot;003–103&quot;, &quot;003–103&quot;, &quot;006–106&quot;, &quot;0...
+## $ production_code &lt;chr&gt; &quot;7G02&quot;, &quot;7G03&quot;, &quot;7G03&quot;, &quot;7G06&quot;, &quot;7G06&quot;, &quot;7G09&quot;...
+## $ episode_title   &lt;chr&gt; &quot;Bart the Genius&quot;, &quot;Homer&#39;s Odyssey&quot;, &quot;Homer&#39;s...
+## $ guest_star      &lt;chr&gt; &quot;Marcia Wallace&quot;, &quot;Sam McMurray&quot;, &quot;Marcia Wall...
+## $ role            &lt;chr&gt; &quot;Edna Krabappel;  Ms. Melon&quot;, &quot;Worker&quot;, &quot;Edna ...</code></pre>
+<p>Well, it looks like this is a pretty low-dimension dataset (6 variables), so we may get more out of just taking a look at the first ten rows than we would trying to mess with <code>glimpse</code>.</p>
+<pre class="r"><code>head(simpsons, n = 10)</code></pre>
+<pre><code>## # A tibble: 10 x 6
+##    season number  production_code episode_title    guest_star   role       
+##    &lt;chr&gt;  &lt;chr&gt;   &lt;chr&gt;           &lt;chr&gt;            &lt;chr&gt;        &lt;chr&gt;      
+##  1 1      002–102 7G02            Bart the Genius  Marcia Wall~ Edna Kraba~
+##  2 1      003–103 7G03            Homer&#39;s Odyssey  Sam McMurray Worker     
+##  3 1      003–103 7G03            Homer&#39;s Odyssey  Marcia Wall~ Edna Kraba~
+##  4 1      006–106 7G06            Moaning Lisa     Miriam Flynn Ms. Barr   
+##  5 1      006–106 7G06            Moaning Lisa     Ron Taylor   Bleeding G~
+##  6 1      007–107 7G09            The Call of the~ Albert Broo~ Cowboy Bob 
+##  7 1      008–108 7G07            The Telltale He~ Marcia Wall~ Edna Kraba~
+##  8 1      009–109 7G11            Life on the Fas~ Albert Broo~ Jacques    
+##  9 1      010–110 7G10            Homer&#39;s Night O~ Sam McMurray Gulliver D~
+## 10 1      011–111 7G13            The Crepes of W~ Christian C~ Gendarme O~</code></pre>
+<p>A couple of things stand out immediately to me.</p>
+<ul>
+<li><code>number</code> looks like it has both series episode (before the hyphen) and season-episode pairing (after the hyphen)<br />
+</li>
+<li><code>role</code> can be multiple characters, and is split by a semicolon <code>;</code><br />
+</li>
+<li><code>production_code</code> can probably be dropped or ignored</li>
+</ul>
+<p>Before I do anything, I want to split up that <code>number</code> column. I’m going to make an arbitrary rule that any two-part episodes (for instance, Season 28’s <em>The Great Phatsby</em>) are going to use the first part’s episode number. I’m going to also ignore the movie for the time being.</p>
+<p>I also want to make sure we follow tidy guidelines, so I’m going to split up that <code>role</code> column and have a separate entry for each role, even if it’s the same person playing the roles in the same episode. That is going to help with summarizing things as we go along.</p>
+<pre class="r"><code>simpsons  %&lt;&gt;% 
+  filter(number != &#39;M1&#39;) %&gt;% 
+  mutate(number = str_remove(number, &quot;;.*$&quot;)) %&gt;% 
+  separate(number, c(&quot;ep_no&quot;, &quot;sep_combo&quot;),sep = &quot;–&quot;, remove = F) %&gt;% 
+  mutate(sep_no = str_sub(sep_combo, -2, -1),
+         role = strsplit(role, &quot;;&quot;)) %&gt;%
+  unnest(role) %&gt;%
+  mutate(role = str_trim(role),
+         season = as.numeric(season),
+         ep_no = as.numeric(ep_no),
+         sep_no = as.numeric(sep_no),
+         sep_combo = as.numeric(sep_combo))</code></pre>
+<p>Full disclosure, I was a bit unsure about the best way to separate that <code>role</code> column when I didn’t know the number of characters, so I jacked <a href="https://stackoverflow.com/a/33288868/11933962">this answer from stackoverflow.</a></p>
+</div>
+<div id="episodes-from-first-to-last" class="section level3">
+<h3>Episodes from First to Last</h3>
+<p>The Simpsons has been on for a <strong><em>long</em></strong> time. It’s been on longer than I’ve been alive. It’s been on longer than Old Town Road was at the top of the Billboard Hot 100. It’s been on longer than I’ve wanted to fit a “rule of 3” joke into a blog post. Naturally, some of these guest stars have been mainstays in the series, so let’s look at some of the longest standing guest stars and roles.</p>
+<p><img src="/post/2019-08-26-tidy-tuesday-1-simpsons-guest-stars_files/figure-html/longest_st_to_end-1.png" width="672" /></p>
+<p>Clearly we’ve got a couple of power houses here in the guest star longevity category. Marcia Wallace, Jon Lovitz, and Jackie Mason all clock in with more than 620 episodes between their first and last episode. That doesn’t mean they are the most frequent guests, however. The Simpsons is such an institution that the series can get big names for cutaways and gags; a big reason that many of these guest stars have such a long time between their first and last episode isn’t that they are an integral part of the series, they are one off jokes.</p>
+</div>
+<div id="episodes-per-guest-star" class="section level3">
+<h3>Episodes per Guest Star</h3>
+<p><img src="/post/2019-08-26-tidy-tuesday-1-simpsons-guest-stars_files/figure-html/most_eps-1.png" width="672" /></p>
+<p>While Marcia Wallace is clearly a reoccuring guest star, Phil Hartman, who has been in the second most episodes, didn’t even make it in the top 25 for longevity. Jon Lovitz and Jackie Mason, on the other hand, appear in 15 and 9 episodes respectively.</p>
+</div>
+<div id="recurring-guest-characters" class="section level3">
+<h3>Recurring Guest Characters</h3>
+<p>Next, let’s take a look at which characters have appeared in the most Simpsons episodes.</p>
+<p><img src="/post/2019-08-26-tidy-tuesday-1-simpsons-guest-stars_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+<p>No surprise here, Edna Krabappel, a character played by Marcia Wallace, has appeared in the most episodes, clocking in at nearly 175, with the second most recurrent character not even hitting the 30 episode mark. An interesting point that was mentioned in the cleaning process rears its head again in this chart, though. We see here that Phil Hartman, who you’ll recall placed second in guest appearances, lands twice in the top 10 character appearance list.</p>
+</div>
+<div id="busiest-simpsons-guest-stars" class="section level3">
+<h3>Busiest Simpsons Guest Stars</h3>
+<p>This leads me to my next question: which guest star is voicing the most characters?</p>
+<p><img src="/post/2019-08-26-tidy-tuesday-1-simpsons-guest-stars_files/figure-html/char_per_star-1.png" width="672" /></p>
+<p>That’s right, ladies and gentlemen. The most prolific guest voice actor on The Simpsons is none other than The Brain of <em>Pinky &amp; The Brain</em> fame! Maurice LaMarche voices 35 guest characters in the series.</p>
+</div>
+<div id="enough-with-the-bar-charts-already" class="section level3">
+<h3>Enough with the Bar Charts Already</h3>
+<p>Yeah, I know. It was a lot. Lots of counts by names, and not a whole lot more. Let’s see what we can do without bar charts, because I mean, oof.</p>
+<pre class="r"><code>num_eps &lt;- c()
+for(i in 1:30){
+  num_eps$season[i] &lt;- i
+  num_eps$eps[i] &lt;- read_html(sprintf(&quot;https://en.wikipedia.org/wiki/The_Simpsons_(season_%s)&quot;,i)) %&gt;% 
+    html_nodes(xpath = &quot;/html/body/div[3]/div[3]/div[4]/div/table[1]/tbody/tr[4]/td&quot;) %&gt;% 
+    html_text() %&gt;% 
+    as.numeric()
+}
+num_eps &lt;- bind_cols(season = num_eps$season, eps = num_eps$eps)</code></pre>
+<p><img src="/post/2019-08-26-tidy-tuesday-1-simpsons-guest-stars_files/figure-html/guests_thru_seasons-1.png" width="672" /></p>
+<p>I noticed a lot of people on Twitter going the “number of guests per season” route, and I like that, but I wanted to also throw in an average guests per episode metric as well, because we have some seasons with fewer episodes than others (the first being the most obvious with only 13 episodes.) As the chart above indicates, the trend is still the same, and they track together, but it does show that the change is not nearly as drastic as it looks in the first few seasons. Also worth noting, I had to go grab the number of episodes per season from Wikipedia, because the final episode number would not appear in our data if there was no guest appearance. That did give me another idea, though. Why not get even more season and episode information from Wikipedia so we can take a quick look at rankings before I wrap this up?</p>
+</div>
+<div id="even-more-season-and-episode-information-from-wikipedia" class="section level3">
+<h3>Even More Season and Episode Information from Wikipedia</h3>
+<pre class="r"><code>season_info &lt;- list()
+for(i in 1:30){
+  season_info[[i]] &lt;-
+    read_html(sprintf(&quot;https://en.wikipedia.org/wiki/The_Simpsons_(season_%s)&quot;,i)) %&gt;% 
+    html_nodes(xpath = &quot;/html/body/div[3]/div[3]/div[4]/div/table[2]&quot;) %&gt;% 
+    html_table() %&gt;% 
+    `[[`(1) %&gt;%
+    as_tibble() %&gt;% 
+    mutate(desc = lead(No.overall, 1)) %&gt;% 
+    filter(!is.na(as.numeric(No.overall))) %&gt;% 
+    janitor::clean_names() %&gt;% 
+    mutate(title = str_remove_all(title, &#39;&quot;&#39;),
+           desc = str_remove_all(desc, &#39;&quot;&#39;),
+           original_air_date = ymd(str_extract(original_air_date, &quot;[0-9]{4}-[0-9]{2}-[0-9]{2}&quot;)),
+           season = i)
+}
+season_info &lt;- bind_rows(season_info) %&gt;% 
+  mutate(u_s_viewers_millions = as.numeric(str_remove(u_s_viewers_millions, &quot;\\[.*\\]&quot;)),
+         no_overall = as.numeric(no_overall),
+         no_inseason = as.numeric(no_inseason))</code></pre>
+<p><img src="/post/2019-08-26-tidy-tuesday-1-simpsons-guest-stars_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+<p><img src="/post/2019-08-26-tidy-tuesday-1-simpsons-guest-stars_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<p>Well, that’s sad to see. Granted, the show has been on for 30 years. It’s a wonder it’s still around, but at this point it could probably have 3 viewers a week and still make it on air. Plus, I’d imagine that The Simpsons is a victim of its own success. If The Simpsons wasn’t as successful as it was, Family Guy, American Dad, Bob’s Burgers, etc. wouldn’t even exist, much less be relatively successful. A surprising trend here is mid-season spikes in ratings, especially from season 21 to present day.</p>
+<p>My first thought was that it was perhaps just a function of a mid-season hiatus, but that doesn’t really appear to be all that accurate.</p>
+<p><img src="/post/2019-08-26-tidy-tuesday-1-simpsons-guest-stars_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<p>Ratings do seem to improve with a 3 week hiatus before the episode airs, but if it was as simple as long breaks upping viewership, there wouldn’t be a drop off for a 4 week/month long hiatus. Maybe 3 weeks is that sweet spot between <em>“Oh, right The Simpsons hasn’t been on in a while!”</em> and <em>“Have they finally canceled The Simpsons?”</em></p>
+<p><img src="/post/2019-08-26-tidy-tuesday-1-simpsons-guest-stars_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+</div>
+<div id="okay-so-what-is-it-then" class="section level3">
+<h3>Okay, so what is it then?</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:right;">
+season
+</th>
+<th style="text-align:right;">
+ep_no
+</th>
+<th style="text-align:left;">
+title
+</th>
+<th style="text-align:left;">
+air_date
+</th>
+<th style="text-align:right;">
+viewers_mil
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:left;">
+Treehouse of Horror IV
+</td>
+<td style="text-align:left;">
+1993-10-28
+</td>
+<td style="text-align:right;">
+24.00
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:left;">
+Treehouse of Horror V
+</td>
+<td style="text-align:left;">
+1994-10-30
+</td>
+<td style="text-align:right;">
+22.20
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:left;">
+Treehouse of Horror VI
+</td>
+<td style="text-align:left;">
+1995-10-29
+</td>
+<td style="text-align:right;">
+19.70
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+17
+</td>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:left;">
+Treehouse of Horror XVI
+</td>
+<td style="text-align:left;">
+2005-11-06
+</td>
+<td style="text-align:right;">
+11.63
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+19
+</td>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:left;">
+Treehouse of Horror XVIII
+</td>
+<td style="text-align:left;">
+2007-11-04
+</td>
+<td style="text-align:right;">
+11.70
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+20
+</td>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:left;">
+Treehouse of Horror XIX
+</td>
+<td style="text-align:left;">
+2008-11-02
+</td>
+<td style="text-align:right;">
+12.48
+</td>
+</tr>
+</tbody>
+</table>
+<p>Chasing that down the rabbit hole, I found that 6 season highs were Treehouse of Horror episodes. Who knew that Simpsons fans were so enamored with Halloween? Or maybe they’re just enamored with holiday theme episodes. The problem with that idea is that there’s only one season high that aired in December.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:right;">
+season
+</th>
+<th style="text-align:right;">
+ep_no
+</th>
+<th style="text-align:left;">
+title
+</th>
+<th style="text-align:left;">
+air_date
+</th>
+<th style="text-align:right;">
+viewers_mil
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+11
+</td>
+<td style="text-align:right;">
+12
+</td>
+<td style="text-align:left;">
+The Mansion Family
+</td>
+<td style="text-align:left;">
+2000-01-23
+</td>
+<td style="text-align:right;">
+11.30
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+12
+</td>
+<td style="text-align:right;">
+9
+</td>
+<td style="text-align:left;">
+HOMR
+</td>
+<td style="text-align:left;">
+2001-01-07
+</td>
+<td style="text-align:right;">
+18.50
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+15
+</td>
+<td style="text-align:right;">
+9
+</td>
+<td style="text-align:left;">
+I, (Annoyed Grunt)-bot
+</td>
+<td style="text-align:left;">
+2004-01-11
+</td>
+<td style="text-align:right;">
+16.30
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+18
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:left;">
+The Wife Aquatic
+</td>
+<td style="text-align:left;">
+2007-01-07
+</td>
+<td style="text-align:right;">
+13.90
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:left;">
+Once Upon a Time in Springfield
+</td>
+<td style="text-align:left;">
+2010-01-10
+</td>
+<td style="text-align:right;">
+14.62
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+22
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:left;">
+Moms I’d Like to Forget
+</td>
+<td style="text-align:left;">
+2011-01-09
+</td>
+<td style="text-align:right;">
+12.60
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+23
+</td>
+<td style="text-align:right;">
+11
+</td>
+<td style="text-align:left;">
+The D’oh-cial Network
+</td>
+<td style="text-align:left;">
+2012-01-15
+</td>
+<td style="text-align:right;">
+11.48
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+24
+</td>
+<td style="text-align:right;">
+9
+</td>
+<td style="text-align:left;">
+Homer Goes to Prep School
+</td>
+<td style="text-align:left;">
+2013-01-06
+</td>
+<td style="text-align:right;">
+8.97
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+25
+</td>
+<td style="text-align:right;">
+9
+</td>
+<td style="text-align:left;">
+Steal This Episode
+</td>
+<td style="text-align:left;">
+2014-01-05
+</td>
+<td style="text-align:right;">
+12.04
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+26
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:left;">
+The Man Who Came to Be Dinner
+</td>
+<td style="text-align:left;">
+2015-01-04
+</td>
+<td style="text-align:right;">
+10.62
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+27
+</td>
+<td style="text-align:right;">
+11
+</td>
+<td style="text-align:left;">
+Teenage Mutant Milk-Caused Hurdles
+</td>
+<td style="text-align:left;">
+2016-01-10
+</td>
+<td style="text-align:right;">
+8.33
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+28
+</td>
+<td style="text-align:right;">
+11
+</td>
+<td style="text-align:left;">
+Pork and Burns
+</td>
+<td style="text-align:left;">
+2017-01-08
+</td>
+<td style="text-align:right;">
+8.19
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+29
+</td>
+<td style="text-align:right;">
+11
+</td>
+<td style="text-align:left;">
+Frink Gets Testy
+</td>
+<td style="text-align:left;">
+2018-01-14
+</td>
+<td style="text-align:right;">
+8.04
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+30
+</td>
+<td style="text-align:right;">
+12
+</td>
+<td style="text-align:left;">
+The Girl on the Bus
+</td>
+<td style="text-align:left;">
+2019-01-13
+</td>
+<td style="text-align:right;">
+8.20
+</td>
+</tr>
+</tbody>
+</table>
+<p>January, however, is a surprisingly good month for The Simpsons, with the first or second episode of the new year being the season high 13 times, including the most recent 9 seasons. Who knows? Maybe Americans everywhere are getting together at Christmas and reminiscing about the days when The Simpsons wasn’t on its last leg. Everyone gets blurry-eyed, goes home, and watches the first episode of the new year before kicking off the cycle all over again next year.</p>
+<p>If there’s one thing I know though, The Simpsons was around before I was here, and it’ll be around long after I’m gone.</p>
+<p>Diamonds aren’t forever, folks.</p>
+<p><em>Homer Simpson is.</em></p>
+</div>
