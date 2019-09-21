@@ -1,0 +1,226 @@
+---
+title: 'Tidy Tuesday 2: Amusement Park Injuries'
+author: Brad Hill
+date: '2019-09-21'
+slug: tidy-tuesday-2-amusement-park-injuries
+categories:
+  - Data
+tags:
+  - R
+  - r4ds
+  - rstats
+  - tidy tuesday
+  - amusement parks
+  - roller coasters
+  - injuries
+keywords:
+  - tech
+---
+
+
+
+<p>Well, it’s taken all of two posts, but I’ve given up on trying to keep up strictly with the Tidy Tuesday schedule. A new dataset is already available, but there’s a certain freedom in living in the past. Anyway, it’s Saturday! That means it’s time for another rousing game of <em>Can Brad Come Up With Enough Interesting Charts For A Blog Post: The Musical: The Movie: The Game Show</em> in which I, the contestant and host, do a song and dance for you, the at-home audience. This week’s topic for <em>CBCUWEICFABP:TM:TM:TGS</em>, <a href="https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-09-10">supplied by <strong>data.world</strong> and <strong>SaferParks</strong></a> is <strong><em>amusement park injuries!</em></strong></p>
+<div id="more-like-abusement-parks-amirite" class="section level3">
+<h3>More like abusement parks, amirite?</h3>
+<p>I already know I want to see if amusement parks are getting safer over time, but I have no idea how far back this data goes, so I’m going to pull this cart back behind the horse and see what we’ve got.</p>
+<p>I was going to try to dive into both, but I got carried away on the first set, and the second set’s injuries are kind of depressing, whereas this first set has stuff like “Hit in head by other guest’s cell phone” and “Headbutted by father.” There is some neat stuff in that <strong>SaferParks</strong> dataset, like fixed vs. portable parks, and some more granular indication of park type, but I realized you’re also probably not trying to read a 4 page essay on amusement park safety.</p>
+<pre class="r"><code>tx_injuries &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-09-10/tx_injuries.csv&quot;)
+
+glimpse(tx_injuries)</code></pre>
+<pre><code>## Observations: 542
+## Variables: 13
+## $ injury_report_rec &lt;dbl&gt; 2032, 1897, 837, 99, 55, 780, 253, 253, 55, ...
+## $ name_of_operation &lt;chr&gt; &quot;Skygroup Investments LLC DBA iFly Austin&quot;, ...
+## $ city              &lt;chr&gt; &quot;Austin&quot;, &quot;Galveston&quot;, &quot;Grapevine&quot;, &quot;San Ant...
+## $ st                &lt;chr&gt; &quot;TX&quot;, &quot;TX&quot;, &quot;TX&quot;, &quot;TX&quot;, &quot;AZ&quot;, &quot;TX&quot;, &quot;TX&quot;, &quot;T...
+## $ injury_date       &lt;chr&gt; &quot;2/12/2013&quot;, &quot;3/2/2013&quot;, &quot;3/3/2013&quot;, &quot;3/3/20...
+## $ ride_name         &lt;chr&gt; &quot;I Fly&quot;, &quot;Gulf Glider&quot;, &quot;Howlin Tornado&quot;, &quot;S...
+## $ serial_no         &lt;chr&gt; &quot;SV024&quot;, &quot;GS-11-10-WG-14&quot;, &quot;0643-C1-T1-TN60&quot;...
+## $ gender            &lt;chr&gt; &quot;F&quot;, &quot;F&quot;, &quot;F&quot;, &quot;F&quot;, &quot;F&quot;, &quot;F&quot;, &quot;F&quot;, &quot;M&quot;, &quot;M&quot;,...
+## $ age               &lt;chr&gt; &quot;37&quot;, &quot;43&quot;, &quot;n/a&quot;, &quot;51&quot;, &quot;17&quot;, &quot;40&quot;, &quot;36&quot;, &quot;...
+## $ body_part         &lt;chr&gt; &quot;Mouth&quot;, &quot;Knee&quot;, &quot;Right Shoulder&quot;, &quot;Lower Le...
+## $ alleged_injury    &lt;chr&gt; &quot;Student hit mouth on wall&quot;, &quot;Alleged arthro...
+## $ cause_of_injury   &lt;chr&gt; &quot;Student attempted unfamiliar manuever&quot;, &quot;Hi...
+## $ other             &lt;chr&gt; NA, &quot;Prior history of problems with this kne...</code></pre>
+<p>A few observations from this glimpse of <code>tx_injuries</code>:<br />
+- <code>injury_date</code> is all kinds of messed up<br />
+- The <code>st</code> column should be all TX, but I’m seeing AZ and FL as well<br />
+- <code>gender</code> could be a factor<br />
+- <code>age</code> should be numeric, and I see both an <code>n/a</code> and a <code>0</code>. Unless a baby was injured on a roller coaster, we may have some differing <code>NA</code> methodology in this set.<br />
+- <code>body_part</code> looks an awful lot like free text, with some structure in that there are only so many ways to describe body parts</p>
+<pre class="r"><code>clean_tx &lt;- tx_injuries %&gt;% 
+  # Cleaning for date
+  mutate(injury_date1 = as.character(mdy(injury_date)),
+         injury_date2 = ifelse(is.na(injury_date1), format(as.Date(as.numeric(injury_date), origin = &#39;1899-12-30&#39;), &#39;%Y-%m-%d&#39;), NA),
+         injury_date = ymd(coalesce(injury_date1, injury_date2))) %&gt;% 
+  select(-c(injury_date1, injury_date2)) %&gt;% 
+  # Cleaning for gender 
+  mutate(gender = case_when(gender %in% c(&#39;f&#39;, &#39;F&#39;) ~ &#39;F&#39;,
+                            gender %in% c(&#39;m&#39;, &#39;M&#39;) ~ &#39;M&#39;,
+                            T ~ &#39;NA&#39;),
+         gender = na_if(gender, &#39;NA&#39;),
+         gender = factor(gender)) %&gt;% 
+  # Cleaning for age
+  mutate(age = as.integer(age),
+         age = na_if(age, 0)) </code></pre>
+</div>
+<div id="im-going-to-disneyworld" class="section level3">
+<h3>I’m going to Disneyworld!</h3>
+<p>I’m just going to go with the assumption that 0 is meant to be an <code>NA</code> value for age, due to this histogram:</p>
+<p><img src="/post/2019-09-13-tidy-tuesday-2-amusement-park-injuries_files/figure-html/age_hist-1.png" width="1050" /></p>
+<p>Once we adjust for that though, two distinct groups emerge.</p>
+<p><img src="/post/2019-09-13-tidy-tuesday-2-amusement-park-injuries_files/figure-html/unnamed-chunk-2-1.png" width="1050" /></p>
+<p>There is a pretty clear distinction that comes about when looking at the distribution of injuries by age. We have a peak right around the 10-12 mark, and another local peak at around the 30-35 mark. One way to interpret this is that children may not quite be the proper height for certain rides, leading to injury, while adults over 30 may be less fit and more injury prone (back, neck, etc.) than their 20-30 year old counterparts.</p>
+</div>
+<div id="perfect-attendance-was-overrated-anyway" class="section level3">
+<h3>Perfect attendance was overrated anyway</h3>
+<p>This could be true, but I am operating under the assumption that bias comes into play here and leaning towards the idea that increased injury reports are due to increased attendance in these demographics. This theory relies on the idea that a majority of amusement parks are technically <em>theme parks</em> (think Disneyworld or Dollywood vs. Six Flags or Cedar Point) which cater to and draw in more families than “thrill-seekers.”</p>
+<p><img src="/post/2019-09-13-tidy-tuesday-2-amusement-park-injuries_files/figure-html/unnamed-chunk-3-1.png" width="1200" /></p>
+<p>The above chart does just a swell job of corroborating my idea that the attendance is a huge factor in this dataset. In fact, only 22 of the 542 reports, or 4.06%, occur between October and February. Of those, 12 (54.55%) of the attractions are at predominately indoor parks, and one is from a rented inflatable.</p>
+<p>While there is a decreasing trend in injury reports over time, albeit a small one, this decrease corresponds with an increase in the BLS’s Producer Price Index values for amusement and theme park admission prices. (Yeah, I don’t know who decided we needed that either, but here I am using it, so…)</p>
+<p><img src="/post/2019-09-13-tidy-tuesday-2-amusement-park-injuries_files/figure-html/unnamed-chunk-5-1.png" width="1200" /></p>
+<p><em>Quick sidebar on PPI series: I see this get mixed up a lot. PPI is an index, indexed to 100 at a certain point in time (June 2006 in this case.) That 150 you see in February 2013 does</em> <strong><em>not</em></strong> <em>mean people are paying $150 per ticket, they’re just paying 50% more than they were in June of 2006. This has been a public service announcement.</em></p>
+</div>
+<div id="i-want-to-get-off-mr.-bones-wild-ride" class="section level3">
+<h3>I want to get off Mr. Bones’ Wild Ride</h3>
+<p>Another question I decided to dig into was whether scarier/more negative names correlated with higher injuries. My thought process there was pretty straight forward. A ride called <strong><em>The Skull Crusher</em></strong> is almost certainly going to be more physically taxing than <strong><em>The Pillow Pet Palace</em></strong>.</p>
+<p>There are a few ways to do this, but I went with the one that got this post done before my 40th birthday. Using the NRC lexicon, we aren’t limited to only positive and negative sentiments. NRC includes things like fear, anger, anticipation, etc. I thought that would be a good way to see if we could actually find any insights.</p>
+<p><img src="/post/2019-09-13-tidy-tuesday-2-amusement-park-injuries_files/figure-html/unnamed-chunk-6-1.png" width="1050" /></p>
+<p>It’s worth noting this is a pretty quick rundown of a portion of this analysis that could go into much more depth. We have certain words that are counted as both negative and fear, or some that could be positive or negative given different context. That’s an entire post in itself, so I’m just doing the quick and dirty method.</p>
+</div>
+<div id="head-shoulders-knees-and-neck" class="section level3">
+<h3>Head, shoulders, knees, and neck</h3>
+<p>In what may be the most obvious of all the insights here, head, shoulder, and neck are the 3 most cited body part in these injury reports. There’s a huge dropoff from neck, the third highest injury site, to knee, the fourth highest. This makes sense, as the head, shoulders, and neck are the 3 most exposed parts of the body on most roller coasters.</p>
+<p><img src="/post/2019-09-13-tidy-tuesday-2-amusement-park-injuries_files/figure-html/unnamed-chunk-7-1.png" width="1050" /></p>
+<p>Most of the knee injuries that are ride related involve falling off a raft/float or bumping into something at the bottom of a water slide or while getting on the ride. Most of the knee injuries that are not ride related involve people just standing in line wrong. This brings me to my last point.</p>
+</div>
+<div id="quit-sitting-on-the-rails" class="section level3">
+<h3>Quit sitting on the rails</h3>
+<p>Seriously. Stop. Park employees are tired of yelling at you, I’m tired of park employees yelling at you, and you get hurt. “Who gets hurt in line?” you ask? Well, I’ll tell ya who. These 16 daring men and women risked their lives to do something stupid in line. Jumping over, climbing through, and sitting on the rails are all just a day in the life of these brave souls who just can’t keep their feet on the ground.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Gender</th>
+<th align="left">Age</th>
+<th align="left">Body Part</th>
+<th align="left">Injury</th>
+<th align="left">Cause</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">F</td>
+<td align="left">16</td>
+<td align="left">Head</td>
+<td align="left">Laceration</td>
+<td align="left">Fell and hit head on the wall in the q line</td>
+</tr>
+<tr class="even">
+<td align="left">M</td>
+<td align="left">19</td>
+<td align="left">Right knee</td>
+<td align="left">Dislocation</td>
+<td align="left">Jumping over a q line rail</td>
+</tr>
+<tr class="odd">
+<td align="left">M</td>
+<td align="left">30</td>
+<td align="left">Toe</td>
+<td align="left">Laceration to the toe</td>
+<td align="left">Wearing open toe shoe walking through the q line entrance</td>
+</tr>
+<tr class="even">
+<td align="left">M</td>
+<td align="left">8</td>
+<td align="left">Head</td>
+<td align="left">Pain to the head</td>
+<td align="left">Tripped over q line rope</td>
+</tr>
+<tr class="odd">
+<td align="left">M</td>
+<td align="left">13</td>
+<td align="left">Ankle</td>
+<td align="left">Twisted ankle</td>
+<td align="left">Trying to sit on qline rail</td>
+</tr>
+<tr class="even">
+<td align="left">M</td>
+<td align="left">13</td>
+<td align="left">Teeth/jaw</td>
+<td align="left">Pain in the jaw</td>
+<td align="left">Jumped over the qline hit face on the ground</td>
+</tr>
+<tr class="odd">
+<td align="left">F</td>
+<td align="left">14</td>
+<td align="left">Left thumb</td>
+<td align="left">Tore thumb nail off</td>
+<td align="left">Snagged thumb on the q line rail</td>
+</tr>
+<tr class="even">
+<td align="left">F</td>
+<td align="left">14</td>
+<td align="left">Head</td>
+<td align="left">Contusion</td>
+<td align="left">Hit head on qline pole</td>
+</tr>
+<tr class="odd">
+<td align="left">F</td>
+<td align="left">15</td>
+<td align="left">Ankle</td>
+<td align="left">Twisted ankle</td>
+<td align="left">Walking up the qline ramp</td>
+</tr>
+<tr class="even">
+<td align="left">F</td>
+<td align="left">8</td>
+<td align="left">Neck</td>
+<td align="left">Contusion</td>
+<td align="left">Ran into qline chain</td>
+</tr>
+<tr class="odd">
+<td align="left">F</td>
+<td align="left">14</td>
+<td align="left">Knee</td>
+<td align="left">Pain</td>
+<td align="left">Knee popped when climbing through the qline pole</td>
+</tr>
+<tr class="even">
+<td align="left">M</td>
+<td align="left">NA</td>
+<td align="left">Wrist</td>
+<td align="left">Fractured wrist</td>
+<td align="left">Fell in qline</td>
+</tr>
+<tr class="odd">
+<td align="left">F</td>
+<td align="left">35</td>
+<td align="left">Wrist</td>
+<td align="left">Contusion</td>
+<td align="left">Hand caught in the q line gate</td>
+</tr>
+<tr class="even">
+<td align="left">M</td>
+<td align="left">13</td>
+<td align="left">Finger</td>
+<td align="left">Contusion</td>
+<td align="left">Finger was caught in q line gate</td>
+</tr>
+<tr class="odd">
+<td align="left">M</td>
+<td align="left">5</td>
+<td align="left">Eyebrow</td>
+<td align="left">Laceration</td>
+<td align="left">Walked into turnstile at que line</td>
+</tr>
+<tr class="even">
+<td align="left">M</td>
+<td align="left">5</td>
+<td align="left">Lip</td>
+<td align="left">Laceration</td>
+<td align="left">Walked into hand rail</td>
+</tr>
+</tbody>
+</table>
+<p>This, of course, heavily skews towards the teenage demographic, with an average age of 14.8. So to any teens out there, reading a random mid-20 year old’s blog about Texas theme parks, stay off the rails. For everyone else, there’s Mastercard.</p>
+</div>

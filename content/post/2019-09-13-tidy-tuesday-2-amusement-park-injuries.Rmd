@@ -1,0 +1,292 @@
+---
+title: 'Tidy Tuesday 2: Amusement Park Injuries'
+author: Brad Hill
+date: '2019-09-21'
+slug: tidy-tuesday-2-amusement-park-injuries
+categories:
+  - Data
+tags:
+  - R
+  - r4ds
+  - rstats
+  - tidy tuesday
+  - amusement parks
+  - roller coasters
+  - injuries
+keywords:
+  - tech
+---
+
+Well, it's taken all of two posts, but I've given up on trying to keep up strictly with the Tidy Tuesday schedule. A new dataset is already available, but there's a certain freedom in living in the past. Anyway, it's `r weekdays(Sys.Date())`! That means it's time for another rousing game of *Can Brad Come Up With Enough Interesting Charts For A Blog Post: The Musical: The Movie: The Game Show* in which I, the contestant and host, do a song and dance for you, the at-home audience. This week's topic for *CBCUWEICFABP:TM:TM:TGS*, [supplied by **data.world** and **SaferParks**](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-09-10) is ***amusement park injuries!***   
+  
+### More like abusement parks, amirite?
+   
+I already know I want to see if amusement parks are getting safer over time, but I have no idea how far back this data goes, so I'm going to pull this cart back behind the horse and see what we've got.   
+  
+I was going to try to dive into both, but I got carried away on the first set, and the second set's injuries are kind of depressing, whereas this first set has stuff like "Hit in head by other guest's cell phone" and "Headbutted by father." There is some neat stuff in that **SaferParks** dataset, like fixed vs. portable parks, and some more granular indication of park type, but I realized you're also probably not trying to read a 4 page essay on amusement park safety.    
+  
+  
+```{r setup, echo=F, message=F, warning=F}
+knitr::opts_chunk$set(echo = FALSE, fig.width = 11, message = F, warning = F)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyverse, tidytext, lubridate, devtools, janitor, colorspace, textdata, magick, here, RCurl, jsonlite)
+devtools::install_github('bradisbrad/olfatbones')
+mtn_pal <- c('#374659', '#222e35', '#c7c7d1', '#5a6472', '#4c5362')
+cm_pal <- paste0('#', c('002868', 'bf0a30', '7bbca5', 'ec5f2c', 'c9caa9'))
+logo <- magick::image_read("C:/Users/brad_hill/Pictures/bradisblogging logo.png")
+logo_w <- magick::image_read("C:/Users/brad_hill/Pictures/bradisblogging logo white.png")
+logo_append <- logo %>% 
+  image_resize('250x150')
+logo_w_append <- logo_w %>% 
+  image_resize('220x120')
+```
+
+```{r tx_data_ingest, warning=F, message=F, echo = T}
+tx_injuries <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-09-10/tx_injuries.csv")
+
+glimpse(tx_injuries)
+```
+  
+A few observations from this glimpse of `tx_injuries`:  
+- `injury_date` is all kinds of messed up   
+- The `st` column should be all TX, but I'm seeing AZ and FL as well  
+- `gender` could be a factor  
+- `age` should be numeric, and I see both an `n/a` and a `0`. Unless a baby was injured on a roller coaster, we may have some differing `NA` methodology in this set.   
+- `body_part` looks an awful lot like free text, with some structure in that there are only so many ways to describe body parts   
+
+```{r warnings=F, messages=F, echo=T}
+clean_tx <- tx_injuries %>% 
+  # Cleaning for date
+  mutate(injury_date1 = as.character(mdy(injury_date)),
+         injury_date2 = ifelse(is.na(injury_date1), format(as.Date(as.numeric(injury_date), origin = '1899-12-30'), '%Y-%m-%d'), NA),
+         injury_date = ymd(coalesce(injury_date1, injury_date2))) %>% 
+  select(-c(injury_date1, injury_date2)) %>% 
+  # Cleaning for gender 
+  mutate(gender = case_when(gender %in% c('f', 'F') ~ 'F',
+                            gender %in% c('m', 'M') ~ 'M',
+                            T ~ 'NA'),
+         gender = na_if(gender, 'NA'),
+         gender = factor(gender)) %>% 
+  # Cleaning for age
+  mutate(age = as.integer(age),
+         age = na_if(age, 0)) 
+```
+  
+### I'm going to Disneyworld!    
+
+I'm just going to go with the assumption that 0 is meant to be an `NA` value for age, due to this histogram:  
+  
+```{r age_hist, echo=F}
+plot <- tx_injuries %>% 
+  mutate(age = as.integer(age)) %>% 
+  ggplot(aes(age)) +
+  geom_histogram(binwidth = 1, fill = cm_pal[1], color = lighten(cm_pal[1])) +
+  labs(title = 'Distribution of accident reports by age (includes 0s)',
+       subtitle = 'Disproportionate amount of 0 values for age suggest 0 used as NA',
+       x = 'Age', y = 'Accident Reports') +
+  scale_x_continuous(breaks = seq(0, 70, by = 10)) +
+  theme_bw()
+ggsave(plot = plot, filename = "tx_plot0.png",
+         width = 7, height = 4, dpi = 300)
+p <- image_read('tx_plot0.png')
+image_composite(p, logo_append, gravity = 'northeast', offset = '-20-10')
+```
+
+Once we adjust for that though, two distinct groups emerge.  
+  
+```{r, echo=F}
+plot <- clean_tx %>% 
+  ggplot(aes(age)) +
+  geom_histogram(binwidth = 3, fill = cm_pal[1], color = lighten(cm_pal[1])) +
+  labs(title = 'Distribution of accident reports by age',
+       subtitle = 'Two groups emerge: children (1-18) and parents (20-40)',
+       x = 'Age', y = 'Accident Reports') +
+  scale_x_continuous(breaks = seq(0, 70, by = 10)) +
+  theme_bw()
+ggsave(plot = plot, filename = "tx_plot0a.png",
+         width = 7, height = 4, dpi = 300)
+p <- image_read('tx_plot0a.png')
+image_composite(p, logo_append, gravity = 'northeast', offset = '-20-10')
+```
+  
+There is a pretty clear distinction that comes about when looking at the distribution of injuries by age. We have a peak right around the 10-12 mark, and another local peak at around the 30-35 mark. One way to interpret this is that children may not quite be the proper height for certain rides, leading to injury, while adults over 30 may be less fit and more injury prone (back, neck, etc.) than their 20-30 year old counterparts.  
+  
+### Perfect attendance was overrated anyway   
+  
+This could be true, but I am operating under the assumption that bias comes into play here and leaning towards the idea that increased injury reports are due to increased attendance in these demographics. This theory relies on the idea that a majority of amusement parks are technically *theme parks* (think Disneyworld or Dollywood vs. Six Flags or Cedar Point) which cater to and draw in more families than "thrill-seekers." 
+  
+
+```{r}
+dates <- seq.Date(from = ymd('2013-02-01'), to = ymd('2017-12-31'), by = '1 month')
+
+plot <- dates %>% 
+  enframe(name = NULL, value = 'summary_date') %>% 
+  left_join(clean_tx %>% 
+              mutate(summary_date = rollback(injury_date, roll_to_first = T)) %>% 
+              group_by(summary_date) %>% 
+              summarize(cnt = n())) %>% 
+  mutate(cnt = replace_na(cnt, 0)) %>% 
+  ggplot(aes(summary_date, cnt)) +
+  geom_line(size = 1, color = cm_pal[1]) +
+  geom_smooth(method = 'lm', se = F, linetype = 2, color = cm_pal[3]) +
+  scale_x_date(date_breaks = '3 month', minor_breaks = '1 month', date_labels = '%B %Y') +
+  labs(title = 'Texas amusement park accident reports through time',
+       subtitle = 'Seasonality suggests increased injury reports in summer months, decreasing reports overall',
+       x = '', y = 'Injury Reports') +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave(plot = plot, filename = "tx_plot1.png",
+         width = 8, height = 4.5, dpi = 300)
+p <- image_read('tx_plot1.png')
+image_composite(p, logo %>% 
+  image_resize('260x160'), gravity = 'northeast', offset = '-20-05')
+
+```
+
+The above chart does just a swell job of corroborating my idea that the attendance is a huge factor in this dataset. In fact, only `r nrow(clean_tx %>% filter(month(injury_date) %in% c(10, 11, 12, 1, 2)))` of the `r nrow(clean_tx)` reports, or `r round(((nrow(clean_tx %>% filter(month(injury_date) %in% c(10, 11, 12, 1, 2))))/nrow(clean_tx))*100,2)`%, occur between October and February. Of those, 12 (`r round(12/22*100,2)`%) of the attractions are at predominately indoor parks, and one is from a rented inflatable. 
+  
+  
+While there is a decreasing trend in injury reports over time, albeit a small one, this decrease corresponds with an increase in the BLS's Producer Price Index values for amusement and theme park admission prices. (Yeah, I don't know who decided we needed that either, but here I am using it, so...)   
+  
+
+  
+```{r echo = F}
+get_url <- 'https://api.stlouisfed.org/fred/series/observations?series_id=PCU7131107131101&api_key=c9e5a050e4eae085ea501bbf6fbf61c2&file_type=json'
+JSON_res <- list('error' = NA)
+  while(any(str_detect(names(JSON_res), 'error'))){
+    url_res <- getURL(get_url)
+    while(str_detect(url_res, 'html')){
+      Sys.sleep(5)
+      url_res <- getURL(get_url)
+    }
+    JSON_res <- url_res %>% 
+      fromJSON()
+  }
+ppi_admissions <- JSON_res %>% 
+    `[[`('observations') %>%
+    as_tibble() %>%
+    select(date, value) %>%
+    mutate(date = ymd(date),
+           value = as.numeric(value),
+           symbol = 'PPI_admissions')
+```
+
+```{r}
+plot <- dates %>% 
+  enframe(name = NULL, value = 'summary_date') %>% 
+  left_join(clean_tx %>% 
+              mutate(summary_date = rollback(injury_date, roll_to_first = T)) %>% 
+              group_by(summary_date) %>% 
+              summarize("Injury Reports" = n())) %>% 
+  mutate("Injury Reports" = replace_na(`Injury Reports`, 0)) %>% 
+  left_join(ppi_admissions, by = c('summary_date' = 'date')) %>% 
+  rename("PPI - Park Admissions" = value) %>% 
+  select(-symbol) %>% 
+  gather(series, value, -summary_date) %>% 
+  ggplot(aes(summary_date, value)) +
+  geom_line(size = 1, color = cm_pal[1]) +
+  facet_wrap(~series, scales = 'free_y', ncol = 1, strip.position = 'left') +
+  scale_x_date(date_breaks = '3 month', minor_breaks = '1 month', date_labels = '%B %Y') +
+  labs(title = 'Texas amusement park injury reports vs. PPI: Theme Park Admissions',
+       subtitle = 'The PPI suggests that decreasing injuries correspond with increasing admission prices',
+       x = '', y = '') +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.background = element_rect(fill = cm_pal[5]))
+
+ggsave(plot = plot, filename = "tx_plot2.png",
+         width = 8, height = 4.5, dpi = 300)
+p <- image_read('tx_plot2.png')
+image_composite(p, logo %>% 
+  image_resize('260x160'), gravity = 'northeast', offset = '-20-05')
+```
+  
+*Quick sidebar on PPI series: I see this get mixed up a lot. PPI is an index, indexed to 100 at a certain point in time (June 2006 in this case.) That 150 you see in February 2013 does* ***not*** *mean people are paying $150 per ticket, they're just paying 50% more than they were in June of 2006. This has been a public service announcement.*   
+    
+### I want to get off Mr. Bones' Wild Ride  
+  
+Another question I decided to dig into was whether scarier/more negative names correlated with higher injuries. My thought process there was pretty straight forward. A ride called ***The Skull Crusher*** is almost certainly going to be more physically taxing than ***The Pillow Pet Palace***.  
+  
+There are a few ways to do this, but I went with the one that got this post done before my 40th birthday. Using the NRC lexicon, we aren't limited to only positive and negative sentiments. NRC includes things like fear, anger, anticipation, etc. I thought that would be a good way to see if we could actually find any insights.
+
+```{r}
+plot <- clean_tx %>% 
+  group_by(ride_name) %>% 
+  summarize(cnt = n()) %>% 
+  arrange(desc(cnt)) %>% 
+  unnest_tokens(word, ride_name) %>% 
+  anti_join(stop_words) %>% 
+  group_by(word) %>% 
+  summarize(cnt = sum(cnt)) %>% 
+  left_join(lexicon_nrc()) %>% 
+  filter(!is.na(sentiment)) %>% 
+  arrange(desc(cnt)) %>% 
+  group_by(sentiment) %>% 
+  summarize(cnt = sum(cnt)) %>% 
+  arrange(desc(cnt)) %>% 
+  ggplot(aes(reorder(sentiment, cnt), cnt)) +
+  geom_col(fill = cm_pal[1], color = darken(cm_pal[1])) +
+  labs(x = '', y = 'Injury Reports',
+       title = 'Injury reports by ride name sentiment',
+       subtitle = 'Number of reports for words suggesting fear and trust are as expected') +
+  theme_bw() +
+  coord_flip() +
+  gghighlight::gghighlight(sentiment %in% c('positive','anticipation', 'joy', 'trust'), unhighlighted_colour = cm_pal[2])
+
+ggsave(plot = plot, filename = "tx_plot3.png",
+         width = 7, height = 4, dpi = 300)
+p <- image_read('tx_plot3.png')
+image_composite(p, logo_append, gravity = 'northeast', offset = '-20-10')
+```
+  
+It's worth noting this is a pretty quick rundown of a portion of this analysis that could go into much more depth. We have certain words that are counted as both negative and fear, or some that could be positive or negative given different context. That's an entire post in itself, so I'm just doing the quick and dirty method.   
+  
+### Head, shoulders, knees, and neck  
+  
+In what may be the most obvious of all the insights here, head, shoulder, and neck are the 3 most cited body part in these injury reports. There's a huge dropoff from neck, the third highest injury site, to knee, the fourth highest. This makes sense, as the head, shoulders, and neck are the 3 most exposed parts of the body on most roller coasters.   
+   
+```{r}  
+plot <- clean_tx %>% 
+  filter(st == 'TX') %>% 
+  unnest_tokens(word, body_part) %>% 
+  anti_join(stop_words) %>% 
+  select(word, age) %>% 
+  group_by(word, age) %>% 
+  summarize(cnt = n()) %>% 
+  filter(!word %in% c('left', 'lower', 'pain', 'top', 'upper', 'rt', 'guest', 'alleges', 'hospital', 'injured', 'injuries', 'sore', 'transported', 'unknown', NA)) %>%
+  group_by(word) %>% 
+  summarize(cnt = sum(cnt)) %>% 
+  top_n(10, cnt) %>% 
+  ggplot(aes(reorder(word, cnt), cnt)) +
+  geom_col(fill = cm_pal[1], color = darken(cm_pal[1])) +
+  labs(x = '', y = 'Injury Reports', 
+       title = 'Injury reports by body part',
+       subtitle = 'Head injuries are head and shoulders above the rest') +
+  theme_bw() +
+  coord_flip()
+
+ggsave(plot = plot, filename = "tx_plot4.png",
+         width = 7, height = 4, dpi = 300)
+p <- image_read('tx_plot4.png')
+image_composite(p, logo_append, gravity = 'northeast', offset = '-20-10')
+```
+  
+Most of the knee injuries that are ride related involve falling off a raft/float or bumping into something at the bottom of a water slide or while getting on the ride. Most of the knee injuries that are not ride related involve people just standing in line wrong. This brings me to my last point.   
+  
+### Quit sitting on the rails   
+  
+Seriously. Stop. Park employees are tired of yelling at you, I'm tired of park employees yelling at you, and you get hurt. "Who gets hurt in line?" you ask? Well, I'll tell ya who. These 16 daring men and women risked their lives to do something stupid in line. Jumping over, climbing through, and sitting on the rails are all just a day in the life of these brave souls who just can't keep their feet on the ground.    
+    
+    
+  
+```{r echo=F}
+clean_tx %>% 
+  filter(str_detect(cause_of_injury, '(Q|q).*(L|l)ine|(H|h)and (R|r)ail')) %>% 
+  mutate_all(stringr::str_to_sentence) %>% 
+  select('Gender' = gender, 'Age' = age, 'Body Part' = body_part, 'Injury' = alleged_injury, 'Cause' = cause_of_injury) %>% 
+  knitr::kable()
+```
+  
+This, of course, heavily skews towards the teenage demographic, with an average age of `r clean_tx %>% filter(str_detect(cause_of_injury, '(Q|q).*(L|l)ine|(H|h)and (R|r)ail')) %>% pull(age) %>% mean(na.rm = T) %>% round(1)`. So to any teens out there, reading a random mid-20 year old's blog about Texas theme parks, stay off the rails. For everyone else, there's Mastercard.   
+  
