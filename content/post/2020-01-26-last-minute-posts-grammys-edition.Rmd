@@ -1,0 +1,124 @@
+---
+title: 'Last Minute Posts: Grammys Edition'
+author: Brad Hill
+date: '2020-01-26'
+slug: last-minute-posts-grammys-edition
+categories:
+  - Personal
+tags:
+  - grammy
+  - grammys
+  - general field
+  - album of the year
+  - best new artist
+  - pop culture
+  - record of the year
+keywords:
+  - grammys
+---
+
+```{r include=F}
+knitr::opts_chunk$set(echo = FALSE)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyverse, tidyquant, tidytext, lubridate, odbc, rebus, gghighlight, DataExplorer, devtools, skimr, magrittr,rvest, tidygraph, ggraph, colorspace)
+devtools::install_github('bradisbrad/olfatbones'); library(olfatbones)
+devtools::install_github("thebioengineer/tidytuesdayR"); library(tidytuesdayR)
+```
+
+This one is going to be a race against the clock, folks.    
+  
+At the time of this writing, the 62nd Grammy Awards start in 2 hours. Which means I'll probably post this right as the main event is starting. The *truly incredible* part of this is that I built my way too involved nested Grammys playlist in Spotify a full 2 months ago. I had a whole plan on evaluating the categories, looking at past winners, predicting this year's from a data perspective, etc. But *here we are.*  
+  
+I'd still like to eventually dig into these from a data perspective, using some Frankenstein's monster amalgamation of the Spotify API, Genius, and bad opinions. But for now, I'm going to make some last minute Grammy predictions to really prove how little I know about anything. A full list of nominees can be found wherever Googles are sold. Ask your nearest sales rep for details.     
+  
+## Record of the Year   
+  
+For those as confused as I used to be about what the difference between record and song of the year is, Record of the Year is awarded to the artist *and* the producers, recording and mastering engineers, and mixers for a track. Song of the Year is specifically a songwriting award. So if Baby Shark was an engineering marvel and masterful and compelling from a sound perspective, it'd be up for Record of the Year, but probably not Song of the Year. 
+
+Nominees for Record of the Year are:  
+  
+- **Hey, Ma** - *Bon Iver*  
+- **bad guy** - *Billie Eilish*   
+- **7 rings** - *Ariana Grande*   
+- **Hard Place** - *H.E.R.*   
+- **Talk** - *Khalid, Disclosure*   
+- **Old Town Road - Remix** - *Lil Nas X, Billy Ray Cyrus*    
+- **Truth Hurts** - *Lizzo*   
+- **Sunflower** - *Post Malone, Swae Lee*   
+  
+My pick for this one, after really not thinking I'd pick it, is...    
+    
+### Hey, Ma - Bon Iver
+`r blogdown::shortcode('youtube', 'HDAKS18Gv1U')`
+  
+I'm not a big Bon Iver fan, typically. Especially that last album. But of the nominees for Record of the Year, I thought *Hey, Ma* had the best production and was overall the most interesting song. I absolutely would not be surprised if *bad guy* took this category, though. *Hey, Ma* is definitely the most atmospheric of the options, and I don't think Record of the Year typically goes that direction. I could tell you that more concretely if I hadn't procrastinated for two months, but again, here we are.  
+  
+  
+## Song of the Year   
+  
+A category whose nominees thoroughly confuse me, here are the nominees for Song of the Year:  
+  
+- **Always Remember Us This Way** - *Lady Gaga*   
+- **bad guy** - *Billie Eilish*   
+- **Bring My Flowers Now** - *Tanya Tucker*   
+- **Hard Place** - *H.E.R.*   
+- **Lover** - *Taylor Swift*   
+- **Norman fucking Rockwell** - *Lana Del Rey*   
+- **Someone You Loved** - *Lewis Capaldi*   
+- **Truth Hurts** - *Lizzo*    
+  
+These nominees are so so strange to me. It is confounding to me that neither *Hey, Ma* or *Sunflower* were up for a songwriting award, but *bad guy* is. Further, *Norman fucking Rockwell* isn't even the best song on that album, much less the best song of the year. And Lewis Capaldi's track [isn't even good for an Ed Sheeran ripoff.](https://www.youtube.com/watch?v=sW_32lzQvos)   
+  
+I guess my pick goes to...  
+  
+### Hard Place - H.E.R.   
+  
+`r blogdown::shortcode('youtube', 'zfHbuTG8IHE')`
+  
+This is more of a consolation pick than anything. I could see the Tanya Tucker or Lizzo track winning this category just as easily, and I'm sure *bad guy* or the Lady Gaga track will probably win it, but I know H.E.R. won't win Album of the Year, even though it's the best of the options. So I'm going to hold out hope that this one wins it just for good measure.   
+  
+## Album of the Year  
+  
+This year's nominees for Album of the Year aren't exactly mind blowing, in my opinion. Not that they're bad, but they, for the most part, just kind of *exist.* *Father of the Bride* was massively disappointing after such a long wait for a new Vampire Weekend release, *7* is an EP that has somehow been nominated for Album of the Year, despite having a run time of 18 minutes **with the same song on the album twice.** Ariana Grande's rebound album that came on the heels of *Sweetener* is up too.   
+  
+If I haven't mentioned all of them yet, the nominees for this category are:   
+- **Father of the Bride** - *Vampire Weekend*   
+- **Cuz I Love You** - *Lizzo*   
+- **7 EP** - *Lil Nas X*   
+- **I Used To Know Her** - *H.E.R.*   
+- **thank u, next** - *Ariana Grande*   
+- **WHEN WE ALL FALL ASLEEP, WHERE DO WE GO?** - *Billie Eilish*   
+- **Norman Fucking Rockwell!** - *Lana Del Ray*   
+- **i,i** - *Bon Iver*   
+
+  
+My favorite album of this batch is definitely *I Used To Know Her*, and I think it should win. With that being said, my pick for Album of the Year is...  
+  
+### WHEN WE ALL FALL ASLEEP, WHERE DO WE GO? - Billie Eilish  
+  
+`r blogdown::shortcode('youtube', 'k1ATPhkVWi0')`   
+  
+I know the H.E.R. album isn't going to win. I don't know why, but it just won't. It's not even nominated for Best R&B Album, or Best Urban Contemporary Album. I don't know where they want to put it, but somehow it's been nominated for Album of the Year without being nominated for any other album categories. Billie Eilish put together a pretty solid album with this one, and of the remaining albums, I think it's the most likely to win.   
+  
+## Best New Artist  
+  
+This category always makes me realize just how incredibly long a year can be. How have Billie Eilish, Lizzo, and Lil Nas X not existed for an eternity? Either way, the nominees for this category are:   
+  
+- **Black Pumas**   
+- **Billie Eilish**   
+- **Lil Nas X**   
+- **Lizzo**   
+- **Maggie Rogers**   
+- **Rosalia**   
+- **Tank and The Bangas**   
+- **Yola**   
+  
+Winner of this category basically *has* to be...  
+  
+### Lizzo   
+  
+`r blogdown::shortcode('youtube', 'vuq-VAiW9kw')`   
+  
+None of the other nominees has become the massive cultural mainstay that Lizzo has seemed to become this year. She's everywhere. She's especially in airports with egregious clothing. She was in Boston when *I* was in Boston this summer. If that's not proof enough, I don't know what is. That said, I've heard nothing but good things about Rosalia, and I listened to the Black Pumas and Yola albums, and those were both very solid. I also wouldn't be surprised if Billie Eilish won this one if she wins Album of the Year.   
+  
+Had I had, oh, I don't know, 2 full months as I had originally planned, we'd have gotten into the other major groups. Unfortunately, past me hates future me, so we're living with the consequences now. Eventually I will exact my revenge on my past self, but until then, this has been the Grammy Award Edition of Last Minute Posts. Goodnight.
