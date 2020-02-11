@@ -24,7 +24,6 @@ knitr::opts_chunk$set(echo = FALSE)
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(tidyverse, tidyquant, tidytext, lubridate, odbc, rebus, gghighlight, devtools, skimr, magrittr,rvest, tidygraph, ggraph, colorspace, gganimate, ggmap, maps, osmdata, extrafont, magick, here)
 devtools::install_github('bradisbrad/olfatbones'); library(olfatbones)
-register_google(key = "AIzaSyC_W-OpcyCzcjas8HigSEOaN0LMRdAAO4o")
 world_map <- map_data('state')
 forest_pal <- c('#19270d', '#25591f', '#818c3c', '#72601b', '#593a0e', '#F0C11F')
 library(devtools)
@@ -191,7 +190,7 @@ ggsave('top_trees.png', sf_plot, device = 'png', width = 10.5, height = 5.66)
 p <- image_read('top_trees.png')
 image_composite(p, logo_w %>% 
                   image_resize('260x160'), gravity = 'southwest', offset = '-20-05') %>% 
-  image_resize('1080x1080') %>% 
+  image_resize('2400x2400') %>% 
   image_write(path = here::here("content/post/SFDPW_trees.png"))
 ```
 
