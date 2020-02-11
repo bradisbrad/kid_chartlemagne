@@ -1,0 +1,202 @@
+---
+title: 'Tidy Tuesday: Tree''s Company Too'
+author: Brad Hill
+date: '2020-02-11'
+slug: tidy-tuesday-trees-company-too
+categories:
+  - Data
+tags:
+  - R
+  - r4ds
+  - rstats
+  - tidy tuesday
+  - san francisco
+  - trees
+  - public works
+  - sfdpw
+keywords:
+  - tech
+---
+
+```{r, include = F}
+knitr::opts_chunk$set(echo = FALSE)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyverse, tidyquant, tidytext, lubridate, odbc, rebus, gghighlight, devtools, skimr, magrittr,rvest, tidygraph, ggraph, colorspace, gganimate, ggmap, maps, osmdata, extrafont, magick, here)
+devtools::install_github('bradisbrad/olfatbones'); library(olfatbones)
+world_map <- map_data('state')
+forest_pal <- c('#19270d', '#25591f', '#818c3c', '#72601b', '#593a0e', '#F0C11F')
+library(devtools)
+install_github("wch/Rttf2pt1")
+install_github("wch/extrafont")
+logo <- magick::image_read("C:/Users/brad_hill/Pictures/bradisblogging logo.png")
+logo_w <- magick::image_read("C:/Users/brad_hill/Pictures/bradisblogging logo white.png")
+logo_append <- logo %>% 
+  image_resize('250x150')
+logo_w_append <- logo_w %>% 
+  image_resize('220x120')
+```
+
+What's this? An unnumbered Tidy Tuesday post? With a pun as the title? _That's right, folks!_ I've acheived **maximum power.** I've decided that without the constraints of a number, I can do any Tidy Tuesday set I want! And there's nothing any of you can do to stop me!   
+
+Realistically, I'd like to stay pretty close to the week these are released. But we're close, you and I, aren't we? We both know that's not going to happen. I know it's been nearly a 6 month hiatus, but we're back, baby! So come and knock on our door, we've been waiting for you.   
+
+Today we're looking at:   
+
+### Trees!
+
+I'm assuming we all know what trees are. This data was sourced from San Francisco's [open data portal](https://data.sfgov.org/City-Infrastructure/Street-Tree-List/tkzw-k3nq), and lists all trees maintained by the San Francisco Department of Public Works (DPW.)    
+
+```{r ingest_data, echo = T, message = F}
+sf_trees <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-01-28/sf_trees.csv')
+```
+
+```{r initial_eda}
+glimpse(sf_trees)
+```
+
+```{r planted}
+sf_trees %>%
+  filter(!is.na(date)) %>% 
+  group_by(yr = year(date)) %>% 
+  summarize(cnt = n()) %>% 
+  ggplot(aes(yr, cnt)) +
+  geom_col(fill = forest_pal[2]) +
+  labs(title = 'Trees planted by year',
+       x = '', y = 'Trees') +
+  theme_bw() +
+  scale_x_continuous(breaks = seq(1955, 2020, 5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Right off the bat, we see that some of these trees were planted all the way back in 1955. We've got a big gap between 1956 and 1969, but given that this data only started being recorded in 2012, I'm going to assume that's just a lapse and not that San francisco managed to not plant any trees for 11 years. Similarly, I find it hard to believe that only 1 tree was planted in 1971. There are also spikes in 1998 and 2008. Evidently, there was a [huge storm driven by El Nino](https://www.nytimes.com/1998/02/04/us/el-nino-brings-flooding-and-high-winds-to-coastal-california.html) in 1998 that could have potentially uprooted trees and necessitated replanting. Let's take a look at 1998 compared to the surrounding years to see if there was an influx of planting after the storm.    
+
+```{r}
+sf_trees %>% 
+  filter(year(date) %in% c(1996:2000)) %>% 
+  group_by(month = month(date), year = year(date)) %>% 
+  summarize(cnt = n()) %>% 
+  ggplot(aes(month, cnt)) +
+  geom_col(fill = forest_pal[2]) +
+  theme_bw() +
+  scale_x_continuous(breaks = 1:12, labels = month.name) +
+  facet_wrap(~ year, ncol = 1, strip.position = 'right') +
+  labs(x = '', y = 'Trees planted',
+       title = 'Trees planted by month') +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.background = element_rect(fill = forest_pal[3]))
+
+```
+
+While I don't really see a common pattern across these 5 years, it's pretty clear that there were higher sustained plantings throughout the entire year of 1998. I'm curious if the spike in 2008 has the same pattern.    
+
+```{r}
+sf_trees %>% 
+  filter(year(date) %in% c(1998, 2008)) %>% 
+  group_by(month = month(date), year = year(date)) %>% 
+  summarize(cnt = n()) %>% 
+  ggplot(aes(month, cnt)) +
+  geom_col(fill = forest_pal[2]) +
+  theme_bw() +
+  scale_x_continuous(breaks = 1:12, labels = month.name) +
+  facet_wrap(~ year, ncol = 1, strip.position = 'right') +
+  labs(x = '', y = 'Trees planted',
+       title = 'Trees planted by month') +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.background = element_rect(fill = forest_pal[3]))
+```
+
+Not entirely. Much lower numbers for May in 2008, but higher sustained numbers early in the year. 2008 is interesting on its own, however, because it was year 4 of a [5 year initiative](https://sfenvironment.org/sites/default/files/fliers/files/sfe_uf_2008_annual_uf_report.pdf) to plant 25000 trees. 2008 shifted strongly toward street trees, which is what this dataset consists of. Comparing annual totals to those in the report shows a mismatch in sums, likely due to a difference in what is considered a year.   
+
+So where is it exactly that we're seeing these trees being planted? Well, let's look at this shitty little animation that I made before I link to someone actually skillful doing something similar.  
+
+
+```{r include = F, message = F}
+# san_fran <- get_map('San Francisco, CA', zoom = 13)
+# 
+# p <- ggmap(san_fran) +
+#   geom_point(data = sf_trees %>% filter(!is.na(date), dbh >= 1, dbh <= 15),
+#              aes(longitude, latitude, size = dbh),
+#              alpha = 0.6,
+#              color = forest_pal[2]) +
+#   transition_time(date) +
+#   enter_fade() +
+#   exit_fade() +
+#   shadow_mark(size = 1, alpha = alpha/2) +
+#   labs(title = 'Trees planted on {frame_time}',
+#        x = '', y = '') +
+#   theme(legend.position = 'none',
+#         axis.text = element_blank())
+# 
+# anim_save('where_the_trees.gif', p)
+```
+
+```{r}
+magick::image_animate(magick::image_read('where_the_trees.gif'))
+```
+
+As time goes on, it's pretty clear that there are some streets that get more love than others. And that's the part that a visualization should really focus on. Let's take a look at someone who did it well.   
+
+<center>
+`r blogdown::shortcode('tweet', '1222528598818639873')`
+</center>   
+
+Look at that! Impressive use of color, clean, understated, and an rstudio conference reference to boot! I had never heard of the `osmdata` package before, but you better believe I'll be using it next time we get a dataset like this. Give Georgios a follow, they've got some high quality content.  
+
+In fact, why don't I give it a shot now? Are certain species of trees planted more often on certain streets / in certain areas? Let's see if I can make something as good looking as Georgios's up there.   
+
+```{r eval = F, echo = T}
+streets <- sf_trees %>% 
+  filter(latitude < 40 & latitude > 37.7,
+         species != 'Tree(s) ::',
+         species != '::') %>% 
+  mutate(species_name = trimws(str_replace(species, "^.*::(.*)$", '\\1'))) %>% 
+  add_count(species_name) %>% 
+  filter(n > 7000)
+
+san_fran <- getbb('San Francisco') %>% 
+  opq() %>%
+  add_osm_feature(key = "highway", value = c("residential", "living_street", 
+                                             "unclassified", "service", "footway")) %>%
+  osmdata_sf()
+
+sf_plot <- ggplot() +
+  geom_sf(data = san_fran$osm_lines, color = lighten(forest_pal[1]), 
+          size = 0.3, alpha = 0.6) +
+  geom_point(data = streets %>% 
+               mutate(species_name = toupper(species_name)), 
+             aes(longitude, latitude, color = species_name), size = 0.15, alpha = 0.6)  +
+  scale_color_manual(values = forest_pal[-1], 
+                     guide = guide_legend(override.aes = list(size = 2))) +
+  coord_sf(xlim = c(-122.51, -122.29), ylim = c(37.7, 37.81)) +
+  scale_x_continuous(expand = expand_scale(0.2)) +
+  theme_void() +
+  labs(color = '',
+       title = 'TOP 5 SPECIES MAINTAINED BY SAN FRANCISCO DPW') +
+  theme(plot.background = element_rect(fill = forest_pal[1],
+                                       color = forest_pal[1]),
+        panel.background = element_rect(fill = forest_pal[1],
+                                        color = forest_pal[1]),
+        legend.position = c(0.8, 0.15),
+        legend.text = element_text(color = darken(forest_pal[6]), 
+                                   family = 'National Park Heavy', size = 18),
+        plot.title = element_text(color = darken(forest_pal[6]), hjust = 0.5,
+                                  family = 'National Park Outline', size = 30))
+```
+
+```{r include = F, eval=F}
+ggsave('top_trees.png', sf_plot, device = 'png', width = 10.5, height = 5.66)
+
+p <- image_read('top_trees.png')
+image_composite(p, logo_w %>% 
+                  image_resize('260x160'), gravity = 'southwest', offset = '-20-05') %>% 
+  image_resize('2400x2400') %>% 
+  image_write(path = here::here("content/post/SFDPW_trees.png"))
+```
+
+```{r}
+magick::image_read(here::here("content/post/SFDPW_trees.png"))
+```
+
+Hey! I did it! With a _lot_ of help from that code from Georgios! I'm pretty impressed with how it turned out, to be quite honest. Shout out to my good friend [Barry](https://carpentercreative.co/) for the inspiration on the color palette and style (even though I ended up switching it around, I'm no thief.)   
+  
+Well, this has been an unfocused mess of a post, so I'm going to go ahead and call it quits on this blog post. This post is pretty light on the data side, but I'm about two weeks behind, which means we've probably got a new Tidy Tuesday set out _right now!_ Join us next year to see if I ever get around to it! 
