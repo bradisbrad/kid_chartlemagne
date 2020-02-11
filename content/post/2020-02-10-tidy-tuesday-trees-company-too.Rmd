@@ -1,7 +1,7 @@
 ---
 title: 'Tidy Tuesday: Tree''s Company Too'
 author: Brad Hill
-date: '2020-02-10'
+date: '2020-02-11'
 slug: tidy-tuesday-trees-company-too
 categories:
   - Data
