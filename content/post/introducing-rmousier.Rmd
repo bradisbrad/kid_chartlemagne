@@ -1,0 +1,69 @@
+---
+title: Introducing rMousier
+author: Brad Hill
+date: '2020-02-23'
+slug: introducing-rmousier
+categories:
+  - Data
+tags:
+  - rstats
+  - rMouse
+  - extension
+  - package
+  - r4ds
+  - r
+  - development
+  - rMouse CTRL
+  - rMouse ALT
+  - rMousier
+  - rMouse hold
+keywords:
+  - tech
+---
+  
+Back in 2017 Dejan Prvulovic created [rMouse](https://cran.r-project.org/web/packages/rMouse/vignettes/rMouseVignette.html), an absolutely killer package that makes automation requiring key presses and mouse movement in R a breeze. rMouse creates a Java Robot Object to handle these actions. If you want learn more about that, check out the vignette linked above.  
+  
+Last year while working on a project at [FreightWaves](https://www.freightwaves.com), I needed to use this functionality, but there were a few features missing that I felt would be useful for the project. The `specialKey()` function in `rMouse` handles `ESC`, `TAB`, and `ENTER`, but didn't include `CTRL` or `ALT`, both of which are pretty crucial in certain circumstances. Further, the use of `specialKey()` didn't allow for holding or releasing one of these keys explicitly. Granted, these are probably pretty fringe cases, but I wanted them. So I threw together a few functions to provide this functionality as an extension of rMouse and that was that.  
+  
+I've found these functions repeatedly useful anytime I'm going to `rMouse`, however, and I can't find the source for it anywhere to try to add it to the code base, so I'm going to throw this package up as an _extension_ of `rMouse` until someone comes across it and that package can cannibalize it. I'm not doing anything ground breaking here, just adding a few key options and explicitly providing hold and release options for special keys. These are functions I wanted/needed, though, so I have to assume someone else somewhere else is going to want something like this, so here it is!   
+  
+## [rMousier](https://github.com/bradisbrad/rMousier)   
+  
+`rMousier` provides three additional functions that are essentially variations on the `rMouse` function `specialKey()`.   
+  
+- `extra_specialKey()` is the exact same as `specialKey()` from `rMouse` but allows use of `CTRL` and `ALT` keys   
+- `hold_specialKey()` only allows `CTRL` and `ALT`, but doesn't release the key until `release_specialKey()` is explicitly called   
+- `release_specialKey()` also only allows `CTRL` and `ALT` but it only releases the key   
+   
+## Use Cases    
+
+### extra_specialKey()   
+  
+`extra_specialKey()` is especially useful if you are trying to automate something in a program that doesn't have some sort of easier API to hit or one you don't have access too. If you need to run through menu items in a program, `ALT` is typically the first place to start with that (ask anyone that has spent extensive time in Excel.) There are also a myriad of keyboard shortcuts that require `CTRL`, but a large number of them require `CTRL` to be held. Which leads to...   
+  
+### hold_specialKey() and release_specialKey()  
+  
+Typically, `CTRL` needs to be held for keyboard shortcuts to work. That's why `hold_specialKey()` and `release_specialKey()` were written. I'm not quite satisfied with how I've got this implemented right now. There's no timeout for `hold_specialKey()` if the release function isn't run, and `release_specialKey()` doesn't automatically know what key is being held. I'm going to add that stuff eventually, but as it stands right now, you have to pass the key both times.   
+  
+Either way, using `hold_specialKey()` and `release_specialKey()` together allows for any of your favorite `CTRL+` shortcuts. Select all, copy, cut, paste, save, whatever.  
+  
+A quick select all and copy code snippet looks like this:   
+  
+```{r eval = F}
+hold_specialKey("CTRL")
+rMouse::type("ac")
+release_specialKey("CTRL")
+```
+  
+  
+## Install it today!  
+  
+```{r eval=F}
+install.packages("devtools", "rMouse");library(rMouse)
+devtools::install_github('bradisbrad/rMousier'); library(rMousier)
+```
+  
+
+## Improvements   
+  
+A lot of the usefulness of this function depends on using `rMouse` to get where you're going first. Using `extra_specialKey()` just lets you get into the menus more reliably, and the hold and release functions are useful in very specific cases. As I mentioned, I'm still wanting to add some additional "smartness" to the hold and release functions, but this is my first (kind of) package, so I'm just getting it out there and letting people have it if they want it. I know it was useful for me, hopefully it'll be useful for you. Please hit me up with any questions or suggestions. And again, Dejan, if you're out there reading this, feel free to just pull this into your package. 
