@@ -32,7 +32,7 @@ canonifyurls = true
 
 [author]
   name = "Brad Hill"
-  bio = "Brad Hill is a state of mind. He's also a real person, living in Chattanooga, TN and working as a data scientist while trying to make people appreciate the weird music he likes and write satire.  He is survived by his beautiful child and four loving wives."
+  bio = "Brad Hill is a state of mind. He's also a real person, living in Nashville, TN and working as a data scientist while trying to make people appreciate the weird music he likes and write satire.  He is survived by his beautiful child and four loving wives."
   job = "Senior Data Scientist"
   location = "USA"
   # Your Gravatar email. Overwrite `author.picture` everywhere in the blog
