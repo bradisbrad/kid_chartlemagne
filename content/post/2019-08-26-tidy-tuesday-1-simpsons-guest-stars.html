@@ -26,27 +26,27 @@ keywords:
 glimpse(simpsons)</code></pre>
 <pre><code>## Observations: 1,386
 ## Variables: 6
-## $ season          &lt;chr&gt; &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;...
-## $ number          &lt;chr&gt; &quot;002–102&quot;, &quot;003–103&quot;, &quot;003–103&quot;, &quot;006–106&quot;, &quot;0...
-## $ production_code &lt;chr&gt; &quot;7G02&quot;, &quot;7G03&quot;, &quot;7G03&quot;, &quot;7G06&quot;, &quot;7G06&quot;, &quot;7G09&quot;...
-## $ episode_title   &lt;chr&gt; &quot;Bart the Genius&quot;, &quot;Homer&#39;s Odyssey&quot;, &quot;Homer&#39;s...
-## $ guest_star      &lt;chr&gt; &quot;Marcia Wallace&quot;, &quot;Sam McMurray&quot;, &quot;Marcia Wall...
-## $ role            &lt;chr&gt; &quot;Edna Krabappel;  Ms. Melon&quot;, &quot;Worker&quot;, &quot;Edna ...</code></pre>
+## $ season          &lt;chr&gt; &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;...
+## $ number          &lt;chr&gt; &quot;002–102&quot;, &quot;003–103&quot;, &quot;003–103&quot;, &quot;006–106&quot;, &quot;006–10...
+## $ production_code &lt;chr&gt; &quot;7G02&quot;, &quot;7G03&quot;, &quot;7G03&quot;, &quot;7G06&quot;, &quot;7G06&quot;, &quot;7G09&quot;, &quot;7G...
+## $ episode_title   &lt;chr&gt; &quot;Bart the Genius&quot;, &quot;Homer&#39;s Odyssey&quot;, &quot;Homer&#39;s Odys...
+## $ guest_star      &lt;chr&gt; &quot;Marcia Wallace&quot;, &quot;Sam McMurray&quot;, &quot;Marcia Wallace&quot;,...
+## $ role            &lt;chr&gt; &quot;Edna Krabappel;  Ms. Melon&quot;, &quot;Worker&quot;, &quot;Edna Kraba...</code></pre>
 <p>Well, it looks like this is a pretty low-dimension dataset (6 variables), so we may get more out of just taking a look at the first ten rows than we would trying to mess with <code>glimpse</code>.</p>
 <pre class="r"><code>head(simpsons, n = 10)</code></pre>
 <pre><code>## # A tibble: 10 x 6
-##    season number  production_code episode_title    guest_star   role       
-##    &lt;chr&gt;  &lt;chr&gt;   &lt;chr&gt;           &lt;chr&gt;            &lt;chr&gt;        &lt;chr&gt;      
-##  1 1      002–102 7G02            Bart the Genius  Marcia Wall~ Edna Kraba~
-##  2 1      003–103 7G03            Homer&#39;s Odyssey  Sam McMurray Worker     
-##  3 1      003–103 7G03            Homer&#39;s Odyssey  Marcia Wall~ Edna Kraba~
-##  4 1      006–106 7G06            Moaning Lisa     Miriam Flynn Ms. Barr   
-##  5 1      006–106 7G06            Moaning Lisa     Ron Taylor   Bleeding G~
-##  6 1      007–107 7G09            The Call of the~ Albert Broo~ Cowboy Bob 
-##  7 1      008–108 7G07            The Telltale He~ Marcia Wall~ Edna Kraba~
-##  8 1      009–109 7G11            Life on the Fas~ Albert Broo~ Jacques    
-##  9 1      010–110 7G10            Homer&#39;s Night O~ Sam McMurray Gulliver D~
-## 10 1      011–111 7G13            The Crepes of W~ Christian C~ Gendarme O~</code></pre>
+##    season number  production_code episode_title      guest_star    role         
+##    &lt;chr&gt;  &lt;chr&gt;   &lt;chr&gt;           &lt;chr&gt;              &lt;chr&gt;         &lt;chr&gt;        
+##  1 1      002–102 7G02            Bart the Genius    Marcia Walla~ Edna Krabapp~
+##  2 1      003–103 7G03            Homer&#39;s Odyssey    Sam McMurray  Worker       
+##  3 1      003–103 7G03            Homer&#39;s Odyssey    Marcia Walla~ Edna Krabapp~
+##  4 1      006–106 7G06            Moaning Lisa       Miriam Flynn  Ms. Barr     
+##  5 1      006–106 7G06            Moaning Lisa       Ron Taylor    Bleeding Gum~
+##  6 1      007–107 7G09            The Call of the S~ Albert Brooks Cowboy Bob   
+##  7 1      008–108 7G07            The Telltale Head  Marcia Walla~ Edna Krabapp~
+##  8 1      009–109 7G11            Life on the Fast ~ Albert Brooks Jacques      
+##  9 1      010–110 7G10            Homer&#39;s Night Out  Sam McMurray  Gulliver Dark
+## 10 1      011–111 7G13            The Crepes of Wra~ Christian Co~ Gendarme Off~</code></pre>
 <p>A couple of things stand out immediately to me.</p>
 <ul>
 <li><code>number</code> looks like it has both series episode (before the hyphen) and season-episode pairing (after the hyphen)<br />
