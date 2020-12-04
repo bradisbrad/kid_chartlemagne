@@ -19,8 +19,7 @@ keywords:
   - tech
 ---
 
-Look folks, I've learned how to give a proper preview blurb just in time to spam blog posts all December! I hear those sleigh bells jingling already.
-<!--more-->  
+I hear those sleigh bells jingling already.
 
 # It's the most wonderful time of the year  
 
