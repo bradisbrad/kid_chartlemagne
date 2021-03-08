@@ -15,7 +15,12 @@ What a day!
 
 This is a quick test on the evidently new blogdown method.
 
-```{r}
+
+```r
 paste0('And this is an R chunk')
+```
+
+```
+## [1] "And this is an R chunk"
 ```
 
